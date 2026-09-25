@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CityQuest — Dashboard chủ quán (3D)</title>
+
+<!--
+  CesiumJS + OpenFreeMap.
+
+  Cesium có MVTDataProvider: nạp tile .mvt/.pbf rồi chuyển thành 3D Tiles ngay lúc
+  chạy, nhận URL template {z}/{x}/{y} — khớp đúng với OpenFreeMap. Nhờ vậy không cần
+  Mapbox/TomTom/Google, không cần API key, không giới hạn request.
+
+  LƯU Ý: MVTDataProvider đang là tính năng EXPERIMENTAL, Cesium ghi rõ có thể đổi mà
+  không theo chính sách deprecation thông thường. Nếu bản Cesium bạn dùng không có
+  MVTDataProvider hoặc API đã đổi, dùng owner-dashboard.html (bản MapLibre 2D) —
+  ổn định hơn, chỉ là không có 3D.
+-->
+<!-- CESIUM_BASE_URL phải được gán TRƯỚC khi Cesium.js chạy, nếu không Cesium
+     không tìm được web workers và asset đi kèm (lỗi im lặng lúc load tile). -->
+<script>window.CESIUM_BASE_URL = 'https://unpkg.com/cesium@1.145/Build/Cesium/';</script>
+<script src="https://unpkg.com/cesium@1.145/Build/Cesium/Cesium.js"></script>
+<link href="https://unpkg.com/cesium@1.145/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg:#fff; --fg:#1a1a1a; --muted:#666; --border:#e0e0e0;
+    --accent:#2d7d46; --danger:#c0392b; --card:#fafafa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16181c; --fg:#e8e8e8; --muted:#9aa0a6; --border:#2c2f36; --accent:#4caf6a; --card:#1e2128; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--fg); line-height:1.5; }
+  .wrap { max-width:1150px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:14px; margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:1fr 370px; gap:20px; }
+  @media (max-width:900px) { .grid { grid-template-columns:1fr; } }
+  #map { width:100%; height:520px; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .panel h2 { font-size:15px; margin:0 0 12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, textarea { width:100%; padding:8px 10px; font:inherit; font-size:14px;
+    background:var(--bg); color:var(--fg); border:1px solid var(--border); border-radius:6px; }
+  textarea { resize:vertical; min-height:60px; }
+  button { margin-top:14px; width:100%; padding:10px; background:var(--accent); color:#fff;
+    font:inherit; font-weight:600; border:0; border-radius:6px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .coords { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--card);
+    border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-top:8px; white-space:pre; }
+  .out { margin-top:12px; font-size:13px; padding:10px; border-radius:6px;
+    border:1px solid var(--border); display:none; white-space:pre-wrap; word-break:break-word; }
+  .out.ok { display:block; border-color:var(--accent); }
+  .out.err { display:block; border-color:var(--danger); color:var(--danger); }
+  .note { font-size:12px; color:var(--muted); margin-top:18px;
+    border-top:1px solid var(--border); padding-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dashboard chủ quán — 3D</h1>
+  <div class="sub">Click lên quả địa cầu để lấy toạ độ quán, rồi tạo sự kiện gửi tới khách hàng.</div>
+
+  <div class="grid">
+    <div>
+      <div id="map"></div>
+      <div class="coords" id="coords">Đang tải bản đồ…</div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Kết nối</h2>
+        <label for="server">Server</label>
+        <input id="server" value="http://localhost:44321" />
+        <label for="token">JWT</label>
+        <input id="token" placeholder="dán token sau khi đăng nhập" />
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h2>Tạo sự kiện</h2>
+        <label for="bizId">Business ID</label>
+        <input id="bizId" placeholder="UUID của quán" />
+        <label for="evTitle">Tiêu đề</label>
+        <input id="evTitle" placeholder="Giảm 20% cuối tuần" />
+        <label for="evBody">Nội dung</label>
+        <textarea id="evBody" placeholder="Áp dụng cho tất cả món nước…"></textarea>
+        <label for="evStart">Bắt đầu</label>
+        <input id="evStart" type="datetime-local" />
+        <label for="evEnd">Kết thúc</label>
+        <input id="evEnd" type="datetime-local" />
+        <button id="btnEvent">Tạo &amp; gửi thông báo</button>
+        <div class="out" id="evOut"></div>
+      </div>
+
+      <div class="note">
+        Bản đồ: <strong>CesiumJS</strong> render vector tiles của
+        <strong>OpenFreeMap</strong> thành 3D Tiles. Miễn phí, không cần API key.<br /><br />
+        OpenFreeMap © OpenMapTiles — Dữ liệu từ OpenStreetMap.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function show(el, ok, text) {
+  el.className = 'out ' + (ok ? 'ok' : 'err');
+  el.textContent = text;
+}
+
+let picked = null;
+let viewer = null;
+
+(async function initMap() {
+  try {
+    // baseLayer:false + không dùng terrain của ion => Cesium KHÔNG gọi tới Cesium ion,
+    // nên không cần ion access token. Nếu bật World Terrain/World Imagery thì mới cần.
+    viewer = new Cesium.Viewer('map', {
+      baseLayer: false,
+      baseLayerPicker: false,
+      geocoder: false,       // Cesium geocoder mặc định đi qua ion — tắt đi.
+      timeline: false,
+      animation: false,
+      sceneModePicker: false,
+      homeButton: false,
+      navigationHelpButton: false,
+      infoBox: false,
+      selectionIndicator: false,
+      creditContainer: undefined, // giữ credit hiển thị — attribution OSM là bắt buộc
+    });
+
+    // Nền xanh nhạt cho phần chưa có dữ liệu, để địa cầu không đen kịt.
+    viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#dfe6e9');
+
+    if (typeof Cesium.MVTDataProvider === 'undefined') {
+      throw new Error(
+        'Bản Cesium này không có MVTDataProvider.\n' +
+        'Dùng owner-dashboard.html (MapLibre 2D) thay thế.'
+      );
+    }
+
+    // OpenFreeMap: /planet/latest/{z}/{x}/{y}.pbf
+    // maxZoom 14 = zoom tối đa của schema OpenMapTiles, đặt cao hơn cũng không có thêm dữ liệu.
+    const provider = await Cesium.MVTDataProvider.fromUrl(
+      'https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf',
+      {
+        maxZoom: 14,
+        heightReference: Cesium.HeightReference.CLAMP_TO_TERRAIN,
+        scene: viewer.scene,
+      }
+    );
+    viewer.scene.primitives.add(provider.tileset);
+
+    // Bay tới TP.HCM
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(106.7009, 10.7769, 4000),
+      duration: 0,
+    });
+
+    $('coords').textContent = 'Click lên bản đồ để chọn vị trí quán…';
+  } catch (err) {
+    $('coords').textContent = 'Lỗi tải bản đồ 3D:\n' + err.message;
+    return;
+  }
+
+  // ----- Click để lấy toạ độ -----
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction((click) => {
+    // pickEllipsoid trả về điểm trên mặt địa cầu; nếu click ra ngoài bầu trời thì undefined.
+    const cartesian = viewer.camera.pickEllipsoid(
+      click.position,
+      viewer.scene.globe.ellipsoid
+    );
+    if (!cartesian) return;
+
+    const carto = Cesium.Cartographic.fromCartesian(cartesian);
+    picked = {
+      lat: Cesium.Math.toDegrees(carto.latitude),
+      lon: Cesium.Math.toDegrees(carto.longitude),
+    };
+
+    viewer.entities.removeAll();
+    viewer.entities.add({
+      position: cartesian,
+      point: {
+        pixelSize: 14,
+        color: Cesium.Color.fromCssColorString('#2d7d46'),
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    });
+
+    $('coords').textContent =
+      `latitude  = ${picked.lat.toFixed(6)}\nlongitude = ${picked.lon.toFixed(6)}`;
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+})();
+
+// ----- Tạo sự kiện -----
+$('btnEvent').addEventListener('click', async () => {
+  const out = $('evOut');
+  const server = $('server').value.trim().replace(/\/$/, '');
+  const token = $('token').value.trim();
+  const bizId = $('bizId').value.trim();
+
+  if (!token) return show(out, false, 'Chưa nhập JWT.');
+  if (!bizId) return show(out, false, 'Chưa nhập Business ID.');
+  if (!$('evStart').value || !$('evEnd').value)
+    return show(out, false, 'Chưa chọn thời gian bắt đầu/kết thúc.');
+
+  const body = {
+    title: $('evTitle').value.trim(),
+    body: $('evBody').value.trim(),
+    // datetime-local không mang timezone; new Date() hiểu theo giờ máy, toISOString()
+    // đổi sang UTC đúng như server mong đợi.
+    starts_at: new Date($('evStart').value).toISOString(),
+    ends_at: new Date($('evEnd').value).toISOString(),
+  };
+
+  const btn = $('btnEvent');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${server}/v1/businesses/${bizId}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    show(out, res.ok && data.success, data.message || `HTTP ${res.status}`);
+  } catch (err) {
+    show(out, false, 'Không gọi được server: ' + err.message +
+      '\n\nNếu lỗi CORS, kiểm tra CorsLayer trong main.rs.');
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

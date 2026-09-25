@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CityQuest — Giả lập app</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F2136;
+    --ink-2:#15304B;
+    --panel:#193A5A;
+    --panel-2:#1F4468;
+    --line:#2B5578;
+    --paper:#F4EFE2;
+    --gold:#F2B807;
+    --gold-2:#D99B00;
+    --coral:#FF6B57;
+    --mint:#5FD9B0;
+    --text:#F4EFE2;
+    --text-dim:#9FB8CE;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #1a3a58 0%, transparent 60%),
+      radial-gradient(1000px 500px at 90% 110%, #12283f 0%, transparent 55%),
+      var(--ink);
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 60px;
+  }
+  .rig{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;justify-content:center;max-width:980px;}
+  .side{
+    width:300px;
+    padding-top:18px;
+  }
+  .side h1{
+    font-family:'Baloo 2',sans-serif;
+    font-size:26px;
+    margin:0 0 6px;
+    color:var(--gold);
+    letter-spacing:.2px;
+  }
+  .side p{
+    color:var(--text-dim);
+    font-size:14px;
+    line-height:1.6;
+    margin:0 0 18px;
+  }
+  .side code{
+    background:rgba(0,0,0,.25);
+    padding:1px 6px;
+    border-radius:4px;
+    font-size:12.5px;
+    color:var(--mint);
+  }
+  .side .server-box{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .side .server-box label{
+    display:block;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--text-dim);
+    margin-bottom:6px;
+  }
+  .side .server-box input{
+    width:100%;
+    background:var(--ink-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:9px;
+    font-size:13.5px;
+    font-family:'Inter',sans-serif;
+  }
+  .side .dot-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--text-dim);}
+  .dot{width:9px;height:9px;border-radius:50%;background:#6b7f8f;flex:none;}
+  .dot.up{background:var(--mint);box-shadow:0 0 8px var(--mint);}
+  .dot.down{background:var(--coral);box-shadow:0 0 8px var(--coral);}
+
+  /* ===== khung điện thoại ===== */
+  .phone{
+    width:360px;
+    height:740px;
+    background:linear-gradient(180deg,#0c1c2e,#0a1826);
+    border-radius:46px;
+    padding:14px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.65), inset 0 0 0 2px rgba(255,255,255,.03);
+    position:relative;
+    flex:none;
+  }
+  .notch{
+    position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    width:120px;height:22px;background:#0a1826;border-radius:0 0 16px 16px;z-index:5;
+  }
+  .screen{
+    width:100%;height:100%;
+    background:var(--paper);
+    color:#1a2b3a;
+    border-radius:32px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+  .statusbar{
+    padding:14px 20px 6px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:12px;font-weight:600;color:#1a2b3a;
+  }
+  .topbar{
+    padding:2px 18px 14px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .topbar .brand{
+    font-family:'Baloo 2',sans-serif;
+    font-size:19px;font-weight:700;
+    color:var(--ink);
+  }
+  .pts{
+    background:var(--ink);
+    color:var(--gold);
+    font-family:'Baloo 2',sans-serif;
+    font-weight:700;
+    font-size:13.5px;
+    padding:6px 12px;
+    border-radius:100px;
+    display:flex;align-items:center;gap:5px;
+  }
+  .screen-body{
+    flex:1;
+    overflow-y:auto;
+    padding:4px 18px 18px;
+  }
+  .screen-body::-webkit-scrollbar{width:0;}
+
+  .tabbar{
+    display:flex;
+    border-top:1px solid #e4dcc8;
+    background:#efe8d6;
+    padding:8px 6px calc(env(safe-area-inset-bottom) + 8px);
+  }
+  .tab{
+    flex:1;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;font-family:'Inter',sans-serif;
+    font-size:10.5px;font-weight:600;color:#93876d;padding:6px 2px;
+    cursor:pointer;border-radius:12px;
+  }
+  .tab .ic{font-size:18px;line-height:1;}
+  .tab.active{color:var(--ink);background:#e2d8bb;}
+
+  h2.section-title{
+    font-family:'Baloo 2',sans-serif;
+    font-size:18px;margin:14px 0 10px;color:var(--ink);
+  }
+  h2.section-title:first-child{margin-top:6px;}
+
+  .card{
+    background:#fff;
+    border:1px solid #e7e0cd;
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:10px;
+  }
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:11.5px;font-weight:600;color:#7c7261;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field select{
+    width:100%;padding:10px 11px;border-radius:10px;border:1.5px solid #e2dac2;
+    font-size:14px;font-family:'Inter',sans-serif;background:#fbf9f2;color:#1a2b3a;
+  }
+  .field input:focus, .field select:focus{outline:none;border-color:var(--gold-2);}
+  .row{display:flex;gap:8px;}
+  .row > *{flex:1;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:11px 16px;border-radius:11px;border:none;
+    font-family:'Inter',sans-serif;font-weight:700;font-size:13.5px;
+    cursor:pointer;width:100%;
+  }
+  .btn-primary{background:var(--ink);color:var(--gold);}
+  .btn-primary:hover{background:#0c1c2e;}
+  .btn-coral{background:var(--coral);color:#fff;}
+  .btn-ghost{background:#efe8d6;color:var(--ink);}
+  .btn-mint{background:var(--mint);color:#08281f;}
+  .btn:disabled{opacity:.45;cursor:default;}
+  .btn-sm{padding:7px 11px;font-size:12px;width:auto;}
+
+  .switcher{display:flex;background:#efe8d6;border-radius:11px;padding:3px;margin-bottom:14px;}
+  .switcher button{flex:1;border:none;background:none;padding:8px;font-weight:700;font-size:12.5px;border-radius:9px;cursor:pointer;color:#93876d;font-family:'Inter',sans-serif;}
+  .switcher button.active{background:#fff;color:var(--ink);}
+
+  .msg{font-size:12.5px;padding:9px 11px;border-radius:9px;margin-bottom:10px;line-height:1.5;}
+  .msg.ok{background:#e4f7ee;color:#1c6b4d;}
+  .msg.err{background:#fde8e5;color:#a3382a;}
+  .msg.info{background:#eef4fa;color:#2b5578;}
+
+  .place{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:11px 3px;border-bottom:1px solid #f0ead9;
+    gap:10px;
+  }
+  .place:last-child{border-bottom:none;}
+  .place .pname{font-weight:700;font-size:13.5px;color:var(--ink);}
+  .place .pmeta{font-size:11.5px;color:#93876d;margin-top:2px;}
+
+  .item-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .item-card{
+    background:#fff;border:1.5px solid #e7e0cd;border-radius:14px;padding:11px;text-align:left;
+  }
+  .item-card.equipped{border-color:var(--mint);background:#f2fbf7;}
+  .item-card .iname{font-weight:700;font-size:13px;color:var(--ink);}
+  .item-card .islot{font-size:10.5px;color:#93876d;text-transform:uppercase;letter-spacing:.05em;margin:2px 0 8px;}
+  .item-card .icost{font-family:'Baloo 2',sans-serif;color:var(--gold-2);font-size:13px;margin-bottom:8px;}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;background:var(--mint);color:#08281f;margin-left:6px;}
+
+  .voucher{
+    background:linear-gradient(135deg,#fff8e6,#fff);
+    border:1.5px dashed var(--gold-2);
+    border-radius:14px;padding:13px;margin-bottom:10px;position:relative;
+  }
+  .voucher .vtitle{font-family:'Baloo 2',sans-serif;font-size:15px;color:var(--ink);}
+  .voucher .vcode{font-size:12.5px;color:#93876d;margin-top:3px;letter-spacing:.03em;}
+  .voucher .vexp{font-size:11px;color:#a3382a;margin-top:5px;}
+  .voucher.used{opacity:.5;}
+
+  .notif{background:#fff;border:1px solid #e7e0cd;border-radius:13px;padding:11px 12px;margin-bottom:8px;}
+  .notif .ntitle{font-weight:700;font-size:13px;color:var(--ink);}
+  .notif .nbody{font-size:12px;color:#5a5344;margin-top:3px;}
+  .notif.unread{border-left:3px solid var(--coral);}
+
+  .biz-card{background:#fff;border:1px solid #e7e0cd;border-radius:14px;padding:12px;margin-bottom:9px;}
+  .biz-card .bname{font-weight:700;font-size:14px;color:var(--ink);}
+  .biz-card .brole{font-size:11px;color:var(--mint);font-weight:700;text-transform:uppercase;}
+
+  .empty{text-align:center;padding:30px 10px;color:#93876d;font-size:13px;}
+  .lock{text-align:center;padding:40px 16px;}
+  .lock .lic{font-size:34px;margin-bottom:8px;}
+  .lock p{font-size:13px;color:#7c7261;margin:0 0 16px;}
+
+  ::selection{background:var(--gold);color:#0F2136;}
+</style>
+</head>
+<body>
+<div class="rig">
+
+  <div class="side">
+    <h1>CityQuest<br>Giả lập app</h1>
+    <p>
+      Đây là bản mô phỏng chạy trên trình duyệt để bấm thử app thay vì gõ
+      <code>curl</code> hay mở Unity. Nó gọi thẳng vào server đang chạy bằng
+      <code>cargo run</code> trên máy bạn.
+    </p>
+    <div class="server-box">
+      <label>Địa chỉ server</label>
+      <input id="serverUrl" value="http://localhost:44321">
+      <div class="dot-row"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra kết nối</span></div>
+    </div>
+    <p>
+      Nếu chấm đỏ: mở terminal, <code>cd server</code>, chạy <code>cargo run</code>,
+      để cửa sổ đó chạy nền rồi quay lại đây bấm lại.
+    </p>
+    <p>
+      Vì đây là file HTML mở trực tiếp (không phải app thật), mọi dữ liệu vẫn
+      nằm ở server RAM của bạn — tắt server là mất, đúng như thiết kế "chưa
+      cần DB".
+    </p>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="statusbar"><span>9:41</span><span>●●● 5G 🔋</span></div>
+      <div class="topbar">
+        <div class="brand">🗺️ CityQuest</div>
+        <div class="pts" id="ptsBadge" style="display:none">🪙 <span id="ptsVal">0</span></div>
+      </div>
+
+      <div class="screen-body" id="screenBody"></div>
+
+      <div class="tabbar" id="tabbar" style="display:none">
+        <button class="tab" data-tab="map"><span class="ic">📍</span>Bản đồ</button>
+        <button class="tab" data-tab="wardrobe"><span class="ic">👕</span>Tủ đồ</button>
+        <button class="tab" data-tab="vouchers"><span class="ic">🎟️</span>Ví</button>
+        <button class="tab" data-tab="notifs"><span class="ic">🔔</span>Tin</button>
+        <button class="tab" data-tab="biz"><span class="ic">🏪</span>Quán</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = sel => document.querySelector(sel);
+const el = (tag, attrs={}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const k in attrs) {
+    if (k === 'class') n.className = attrs[k];
+    else if (k === 'html') n.innerHTML = attrs[k];
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), attrs[k]);
+    else n.setAttribute(k, attrs[k]);
+  }
+  kids.forEach(k => { if (typeof k === 'string') n.appendChild(document.createTextNode(k)); else if (k) n.appendChild(k); });
+  return n;
+};
+
+let state = {
+  token: localStorage.getItem('cq_token') || null,
+  user: null,
+  tab: 'map',
+  partners: [],
+};
+
+function serverUrl(){ return $('#serverUrl').value.replace(/\/$/,''); }
+
+async function api(path, opts={}) {
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(serverUrl() + path, Object.assign({}, opts, {headers}));
+  let body = null;
+  try { body = await res.json(); } catch(e) {}
+  return { ok: res.ok, status: res.status, body };
+}
+
+async function pingServer() {
+  try {
+    const r = await fetch(serverUrl() + '/v1/partners', {method:'GET'});
+    $('#statusDot').className = 'dot up';
+    $('#statusText').textContent = r.ok ? 'Đã kết nối server' : 'Server phản hồi lỗi';
+  } catch(e) {
+    $('#statusDot').className = 'dot down';
+    $('#statusText').textContent = 'Không gọi được server (đã bật cargo run chưa?)';
+  }
+}
+$('#serverUrl').addEventListener('change', pingServer);
+
+// ---------- render root ----------
+function render() {
+  if (!state.token) {
+    $('#tabbar').style.display = 'none';
+    $('#ptsBadge').style.display = 'none';
+    renderAuth();
+  } else {
+    $('#tabbar').style.display = 'flex';
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === state.tab));
+    renderTab();
+  }
+}
+
+// ---------- màn đăng nhập / đăng ký ----------
+let authMode = 'login';
+function renderAuth() {
+  const body = $('#screenBody');
+  body.innerHTML = '';
+  body.appendChild(el('h2', {class:'section-title'}, 'Chào bạn 👋'));
+  const card = el('div', {class:'card'});
+
+  const sw = el('div', {class:'switcher'});
+  const bLogin = el('button', {class: authMode==='login'?'active':'', onclick:()=>{authMode='login';renderAuth();}}, 'Đăng nhập');
+  const bReg = el('button', {class: authMode==='register'?'active':'', onclick:()=>{authMode='register';renderAuth();}}, 'Đăng ký');
+  sw.appendChild(bLogin); sw.appendChild(bReg);
+  card.appendChild(sw);
+
+  const msgBox = el('div');
+  card.appendChild(msgBox);
+
+  const nameField = el('div', {class:'field'},
+    el('label', {}, 'Tên hiển thị'),
+    el('input', {id:'f_name', placeholder:'Nguyễn Văn A'})
+  );
+  if (authMode === 'register') card.appendChild(nameField);
+
+  card.appendChild(el('div', {class:'field'},
+    el('label', {}, 'Email'),
+    el('input', {id:'f_email', type:'email', placeholder:'ban@vidu.com'})
+  ));
+  card.appendChild(el('div', {class:'field'},
+    el('label', {}, 'Mật khẩu'),
+    el('input', {id:'f_pass', type:'password', placeholder:'Tối thiểu 6 ký tự'})
+  ));
+
+  const btn = el('button', {class:'btn btn-primary', onclick: async () => {
+    btn.disabled = true;
+    const email = $('#f_email').value.trim();
+    const password = $('#f_pass').value;
+    const display_name = $('#f_name') ? $('#f_name').value.trim() : '';
+    const path = authMode === 'login' ? '/v1/auth/login' : '/v1/auth/register';
+    const payload = authMode === 'login' ? {email, password} : {email, password, display_name};
+    const r = await api(path, {method:'POST', body: JSON.stringify(payload)});
+    btn.disabled = false;
+    if (r.ok && r.body && r.body.success) {
+      state.token = r.body.token;
+      localStorage.setItem('cq_token', state.token);
+      state.tab = 'map';
+      render();
+    } else {
+      msgBox.innerHTML = '';
+      msgBox.appendChild(el('div', {class:'msg err'}, (r.body && r.body.message) || 'Có lỗi xảy ra, kiểm tra lại server.'));
+    }
+  }}, authMode === 'login' ? 'Đăng nhập' : 'Đăng ký (tặng 400 điểm)');
+  card.appendChild(btn);
+
+  body.appendChild(card);
+  body.appendChild(el('div', {class:'msg info'},
+    'Đây là app demo — mật khẩu, email chỉ lưu trong RAM của server bạn đang chạy, không gửi đi đâu khác.'));
+}
+
+function logout() {
+  state.token = null; state.user = null;
+  localStorage.removeItem('cq_token');
+  render();
+}
+
+// ---------- tab dispatcher ----------
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => { state.tab = t.dataset.tab; render(); });
+});
+
+async function renderTab() {
+  const body = $('#screenBody');
+  body.innerHTML = '<div class="empty">Đang tải…</div>';
+  try {
+    if (state.tab === 'map') await renderMap();
+    else if (state.tab === 'wardrobe') await renderWardrobe();
+    else if (state.tab === 'vouchers') await renderVouchers();
+    else if (state.tab === 'notifs') await renderNotifs();
+    else if (state.tab === 'biz') await renderBiz();
+  } catch(e) {
+    body.innerHTML = '';
+    body.appendChild(el('div', {class:'msg err'}, 'Lỗi kết nối server: ' + e));
+  }
+  await refreshPoints();
+}
+
+async function refreshPoints() {
+  const r = await api('/v1/wardrobe');
+  if (r.ok && r.body) {
+    $('#ptsBadge').style.display = 'flex';
+    $('#ptsVal').textContent = r.body.points;
+  }
+}
+
+// ---------- Bản đồ + search + check-in ----------
+async function renderMap() {
+  const body = $('#screenBody');
+  body.innerHTML = '';
+  body.appendChild(el('h2', {class:'section-title'}, '📍 Bản đồ đối tác'));
+
+  const searchCard = el('div', {class:'card'});
+  const searchInput = el('input', {placeholder:'Tìm quán theo tên… vd "cà phê"'});
+  searchCard.appendChild(el('div', {class:'field'}, el('label',{},'Tìm kiếm'), searchInput));
+  const resultsBox = el('div', {id:'mapResults'});
+  searchCard.appendChild(resultsBox);
+  body.appendChild(searchCard);
+
+  async function loadPartners(q) {
+    const path = q ? '/v1/search?q=' + encodeURIComponent(q) : '/v1/partners';
+    const r = await api(path);
+    resultsBox.innerHTML = '';
+    const list = (r.body || []);
+    if (!list.length) { resultsBox.appendChild(el('div', {class:'empty'}, 'Không tìm thấy quán nào.')); return; }
+    list.forEach(p => {
+      const pid = p.partner_id || p.id;
+      const row = el('div', {class:'place'},
+        el('div', {},
+          el('div', {class:'pname'}, p.name),
+          el('div', {class:'pmeta'}, `${pid} · ${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}` + (p.points_reward!=null ? ` · +${p.points_reward}đ` : ''))
+        ),
+        el('button', {class:'btn btn-coral btn-sm', onclick: () => doCheckin(pid, p.latitude, p.longitude)}, 'Check-in')
+      );
+      resultsBox.appendChild(row);
+    });
+  }
+
+  searchInput.addEventListener('input', () => loadPartners(searchInput.value.trim()));
+  await loadPartners('');
+
+  const msgSlot = el('div', {id:'checkinMsg'});
+  body.appendChild(msgSlot);
+
+  window._doCheckin = null;
+}
+
+async function doCheckin(partnerId, lat, lon) {
+  const msgSlot = $('#checkinMsg');
+  msgSlot.innerHTML = '<div class="msg info">Đang check-in…</div>';
+  const r = await api('/v1/checkin', {method:'POST', body: JSON.stringify({
+    partner_id: partnerId, latitude: lat, longitude: lon,
+    accuracy_meters: 8, client_timestamp_unix: Math.floor(Date.now()/1000)
+  })});
+  if (r.ok && r.body && r.body.success) {
+    msgSlot.innerHTML = '';
+    msgSlot.appendChild(el('div', {class:'msg ok'}, `✅ Check-in thành công tại ${partnerId}! +${r.body.points_awarded} điểm`));
+  } else {
+    msgSlot.innerHTML = '';
+    msgSlot.appendChild(el('div', {class:'msg err'}, '❌ ' + ((r.body && r.body.message) || 'Check-in thất bại')));
+  }
+  await refreshPoints();
+}
+
+// ---------- Tủ đồ / combo ----------
+async function renderWardrobe() {
+  const body = $('#screenBody');
+  body.innerHTML = '';
+  body.appendChild(el('h2', {class:'section-title'}, '👕 Tủ đồ'));
+  const r = await api('/v1/wardrobe');
+  body.appendChild(el('div', {id:'wardrobeMsg'}));
+  if (!r.ok || !r.body) { body.appendChild(el('div', {class:'msg err'}, 'Không tải được tủ đồ.')); return; }
+
+  const grid = el('div', {class:'item-grid'});
+  r.body.items.forEach(it => {
+    const card = el('div', {class:'item-card' + (it.equipped ? ' equipped' : '')});
+    card.appendChild(el('div', {class:'iname'}, it.name, it.equipped ? el('span',{class:'tag'},'ĐANG MẶC') : ''));
+    card.appendChild(el('div', {class:'islot'}, it.slot));
+    card.appendChild(el('div', {class:'icost'}, '🪙 ' + it.cost));
+    let btn;
+    if (!it.owned) {
+      btn = el('button', {class:'btn btn-primary btn-sm', onclick: async () => { await shopAction('/v1/shop/buy', it.id); }}, 'Mua');
+    } else if (!it.equipped) {
+      btn = el('button', {class:'btn btn-mint btn-sm', onclick: async () => { await shopAction('/v1/shop/equip', it.id); }}, 'Mặc vào');
+    } else {
+      btn = el('button', {class:'btn btn-ghost btn-sm', disabled:'true'}, 'Đang mặc');
+    }
+    card.appendChild(btn);
+    grid.appendChild(card);
+  });
+  body.appendChild(grid);
+}
+
+async function shopAction(path, item_id) {
+  const msgBox = $('#wardrobeMsg');
+  const r = await api(path, {method:'POST', body: JSON.stringify({item_id})});
+  msgBox.innerHTML = '';
+  if (r.ok && r.body && r.body.success) {
+    if (r.body.combo_unlocked) {
+      msgBox.appendChild(el('div', {class:'msg ok'}, `🎉 Đủ combo! Nhận voucher "${r.body.combo_unlocked.voucher_title}" — mã ${r.body.combo_unlocked.voucher_code}. Xem ở tab Ví.`));
+    } else {
+      msgBox.appendChild(el('div', {class:'msg ok'}, '✅ Thành công.'));
+    }
+  } else {
+    msgBox.appendChild(el('div', {class:'msg err'}, '❌ ' + ((r.body && r.body.message) || 'Không thực hiện được.')));
+  }
+  await renderWardrobe();
+  await refreshPoints();
+}
+
+// ---------- Ví / voucher / quét mã ----------
+async function renderVouchers() {
+  const body = $('#screenBody');
+  body.innerHTML = '';
+  body.appendChild(el('h2', {class:'section-title'}, '🎟️ Ví voucher'));
+  const r = await api('/v1/vouchers');
+  if (r.ok && r.body) {
+    if (!r.body.length) body.appendChild(el('div', {class:'empty'}, 'Chưa có voucher nào. Mua đủ đồ để nhận combo ở tab Tủ đồ.'));
+    r.body.forEach(v => {
+      const card = el('div', {class:'voucher' + (v.used ? ' used' : '')});
+      card.appendChild(el('div', {class:'vtitle'}, v.title));
+      card.appendChild(el('div', {class:'vcode'}, 'Mã: ' + v.code + (v.used ? ' · Đã dùng' : '')));
+      card.appendChild(el('div', {class:'vexp'}, 'HSD: ' + new Date(v.expires_at).toLocaleDateString('vi-VN')));
+      body.appendChild(card);
+    });
+  }
+
+  body.appendChild(el('h2', {class:'section-title'}, '📷 Quét mã (dành cho nhân viên/chủ quán)'));
+  const card = el('div', {class:'card'});
+  const codeInput = el('input', {placeholder:'Nhập mã voucher của khách…'});
+  card.appendChild(el('div', {class:'field'}, el('label',{},'Mã voucher'), codeInput));
+  const redeemMsg = el('div');
+  card.appendChild(redeemMsg);
+  card.appendChild(el('button', {class:'btn btn-coral', onclick: async () => {
+    const r2 = await api('/v1/vouchers/redeem', {method:'POST', body: JSON.stringify({code: codeInput.value.trim()})});
+    redeemMsg.innerHTML = '';
+    redeemMsg.appendChild(el('div', {class:'msg ' + (r2.body && r2.body.success ? 'ok' : 'err')},
+      (r2.body && r2.body.message) || 'Không kết nối được server.'));
+  }}, 'Đổi quà'));
+  body.appendChild(card);
+  body.appendChild(el('div', {class:'msg info'}, 'Chỉ tài khoản là nhân viên/chủ ĐÚNG quán phát hành voucher mới đổi được — thử đăng nhập bằng tài khoản khách sẽ bị từ chối.'));
+}
+
+// ---------- Thông báo ----------
+async function renderNotifs() {
+  const body = $('#screenBody');
+  body.innerHTML = '';
+  body.appendChild(el('h2', {class:'section-title'}, '🔔 Thông báo'));
+  const r = await api('/v1/notifications');
+  if (r.ok && r.body) {
+    if (!r.body.length) body.appendChild(el('div', {class:'empty'}, 'Chưa có thông báo nào. Check-in ở một quán rồi nhờ chủ quán tạo sự kiện ở tab Quán.'));
+    r.body.forEach(n => {
+      const card = el('div', {class:'notif' + (n.read ? '' : ' unread')});
+      card.appendChild(el('div', {class:'ntitle'}, n.title));
+      card.appendChild(el('div', {class:'nbody'}, n.body));
+      if (!n.read) {
+        card.appendChild(el('button', {class:'btn btn-ghost btn-sm', style:'margin-top:8px', onclick: async () => {
+          await api('/v1/notifications/' + n.id + '/read', {method:'POST'});
+          renderNotifs();
+        }}, 'Đánh dấu đã đọc'));
+      }
+      body.appendChild(card);
+    });
+  }
+}
+
+// ---------- Quán chủ ----------
+async function renderBiz() {
+  const body = $('#screenBody');
+  body.innerHTML = '';
+  body.appendChild(el('h2', {class:'section-title'}, '🏪 Quán của tôi'));
+
+  const mine = await api('/v1/businesses/mine');
+  const partners = await api('/v1/partners');
+
+  if (mine.ok && mine.body && mine.body.length) {
+    mine.body.forEach(b => {
+      const card = el('div', {class:'biz-card'});
+      card.appendChild(el('div', {class:'bname'}, b.name));
+      card.appendChild(el('div', {class:'brole'}, b.my_role));
+      card.appendChild(el('div', {class:'pmeta', style:'margin-top:4px'}, b.category + (b.partner_id ? ' · ' + b.partner_id : '')));
+
+      if (b.my_role === 'owner') {
+        const staffEmail = el('input', {placeholder:'email nhân viên'});
+        const staffBtn = el('button', {class:'btn btn-ghost btn-sm', style:'margin-top:8px', onclick: async () => {
+          const r = await api(`/v1/businesses/${b.id}/staff`, {method:'POST', body: JSON.stringify({email: staffEmail.value.trim()})});
+          alert((r.body && r.body.message) || 'Xong');
+        }}, '+ Thêm nhân viên');
+        card.appendChild(staffEmail); card.appendChild(document.createElement('br'));
+        card.appendChild(staffBtn);
+      }
+
+      const evTitle = el('input', {placeholder:'Tên sự kiện', style:'margin-top:8px'});
+      const evBody = el('input', {placeholder:'Nội dung', style:'margin-top:6px'});
+      const evBtn = el('button', {class:'btn btn-mint btn-sm', style:'margin-top:6px', onclick: async () => {
+        const now = new Date();
+        const later = new Date(now.getTime() + 3*24*3600*1000);
+        const r = await api(`/v1/businesses/${b.id}/events`, {method:'POST', body: JSON.stringify({
+          title: evTitle.value.trim(), body: evBody.value.trim(),
+          starts_at: now.toISOString(), ends_at: later.toISOString()
+        })});
+        alert((r.body && r.body.message) || 'Xong');
+      }}, '📣 Tạo sự kiện + gửi thông báo');
+      card.appendChild(evTitle); card.appendChild(evBody); card.appendChild(evBtn);
+
+      body.appendChild(card);
+    });
+  } else {
+    body.appendChild(el('div', {class:'empty'}, 'Bạn chưa quản lý quán nào.'));
+  }
+
+  body.appendChild(el('h2', {class:'section-title'}, '+ Tạo quán mới'));
+  const card = el('div', {class:'card'});
+  const nameF = el('input', {placeholder:'Tên quán'});
+  const catF = el('select', {},
+    el('option', {value:'quan_an'}, 'Quán ăn'),
+    el('option', {value:'quan_nuoc'}, 'Quán nước'),
+    el('option', {value:'tiem_mo_hinh'}, 'Tiệm mô hình'),
+    el('option', {value:'khac'}, 'Khác'));
+  const partnerF = el('select', {}, el('option', {value:''}, '— không gắn điểm GPS —'));
+  (partners.body || []).forEach(p => partnerF.appendChild(el('option', {value:p.id}, p.name)));
+  const comboF = el('select', {},
+    el('option', {value:''}, '— không gắn combo —'),
+    el('option', {value:'coffee_black'}, 'coffee_black (Ly cà phê miễn phí)'));
+
+  card.appendChild(el('div', {class:'field'}, el('label',{},'Tên quán'), nameF));
+  card.appendChild(el('div', {class:'field'}, el('label',{},'Loại hình'), catF));
+  card.appendChild(el('div', {class:'field'}, el('label',{},'Điểm GPS (partner_id)'), partnerF));
+  card.appendChild(el('div', {class:'field'}, el('label',{},'Gắn combo có sẵn'), comboF));
+  const bizMsg = el('div');
+  card.appendChild(bizMsg);
+  card.appendChild(el('button', {class:'btn btn-primary', onclick: async () => {
+    const r = await api('/v1/businesses', {method:'POST', body: JSON.stringify({
+      name: nameF.value.trim(), category: catF.value,
+      partner_id: partnerF.value || null, combo_id: comboF.value || null
+    })});
+    bizMsg.innerHTML = '';
+    bizMsg.appendChild(el('div', {class:'msg ' + (r.body && r.body.success ? 'ok' : 'err')},
+      (r.body && r.body.message) || 'Không kết nối được server.'));
+    if (r.body && r.body.success) renderBiz();
+  }}, 'Tạo quán'));
+  body.appendChild(card);
+
+  body.appendChild(el('button', {class:'btn btn-ghost', style:'margin-top:6px', onclick: logout}, 'Đăng xuất'));
+}
+
+pingServer();
+render();
+</script>
+</body>
+</html>

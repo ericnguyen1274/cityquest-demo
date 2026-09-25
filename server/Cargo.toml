@@ -1,0 +1,28 @@
+[package]
+name = "cityquest-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "=0.7.9"
+tokio = { version = "=1.40.0", features = ["full"] }
+serde = { version = "=1.0.210", features = ["derive"] }
+serde_json = "=1.0.128"
+uuid = { version = "=1.10.0", features = ["serde", "v4"] }
+chrono = { version = "=0.4.38", features = ["serde"] }
+jsonwebtoken = "=9.3.0"
+bcrypt = "=0.15.1"
+rand = "=0.8.5"
+dotenvy = "=0.15.7"
+tracing = "=0.1.40"
+tracing-subscriber = "=0.3.18"
+tower-http = { version = "=0.5.2", features = ["cors"] }
+
+# Ghi chú: các version trên được PIN CỨNG (dấu "=") vào một mốc phát hành
+# giữa năm 2024, vì rustc có sẵn trong môi trường build này là 1.75 — các
+# bản crate mới hơn yêu cầu Cargo edition2024 (cần rustc/cargo mới hơn).
+# Nếu máy bạn cài Rust qua rustup (bản mới), có thể bỏ dấu "=" và
+# `cargo update` để lấy bản mới nhất, không ảnh hưởng gì tới code.
+deranged = "=0.3.11"
+time = "=0.3.36"
+time-macros = "=0.2.18"

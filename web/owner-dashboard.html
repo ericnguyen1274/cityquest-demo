@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CityQuest — Dashboard chủ quán</title>
+
+<!-- MapLibre GL JS. OpenFreeMap chỉ phục vụ vector tiles cho MapLibre;
+     không có API ảnh PNG tĩnh, không có search/routing. -->
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666;
+    --border: #e0e0e0;
+    --accent: #2d7d46;
+    --danger: #c0392b;
+    --card: #fafafa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c; --fg: #e8e8e8; --muted: #9aa0a6;
+      --border: #2c2f36; --accent: #4caf6a; --card: #1e2128;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.5;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  #map { width: 100%; height: 480px; border-radius: 10px; border: 1px solid var(--border); }
+  .panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; font: inherit; font-size: 14px;
+    background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  textarea { resize: vertical; min-height: 64px; }
+  button {
+    margin-top: 14px; width: 100%; padding: 10px;
+    background: var(--accent); color: #fff; font: inherit; font-weight: 600;
+    border: 0; border-radius: 6px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .coords {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px; margin-top: 8px;
+  }
+  .out {
+    margin-top: 12px; font-size: 13px; padding: 10px;
+    border-radius: 6px; border: 1px solid var(--border); display: none;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .out.ok { display: block; border-color: var(--accent); }
+  .out.err { display: block; border-color: var(--danger); color: var(--danger); }
+  .note {
+    font-size: 12px; color: var(--muted); margin-top: 18px;
+    border-top: 1px solid var(--border); padding-top: 12px;
+  }
+  .note code { font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dashboard chủ quán</h1>
+  <div class="sub">Chọn vị trí quán trên bản đồ và tạo sự kiện gửi tới khách hàng.</div>
+
+  <div class="grid">
+    <div>
+      <div id="map"></div>
+      <div class="coords" id="coords">Bấm vào bản đồ để chọn vị trí quán…</div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Kết nối</h2>
+        <label for="server">Server</label>
+        <input id="server" value="http://localhost:44321" />
+        <label for="token">JWT (lấy sau khi đăng nhập)</label>
+        <input id="token" placeholder="dán token vào đây" />
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h2>Tạo sự kiện</h2>
+        <label for="bizId">Business ID</label>
+        <input id="bizId" placeholder="UUID của quán" />
+        <label for="evTitle">Tiêu đề</label>
+        <input id="evTitle" placeholder="Giảm 20% cuối tuần" />
+        <label for="evBody">Nội dung</label>
+        <textarea id="evBody" placeholder="Áp dụng cho tất cả món nước…"></textarea>
+        <label for="evStart">Bắt đầu</label>
+        <input id="evStart" type="datetime-local" />
+        <label for="evEnd">Kết thúc</label>
+        <input id="evEnd" type="datetime-local" />
+        <button id="btnEvent">Tạo &amp; gửi thông báo</button>
+        <div class="out" id="evOut"></div>
+      </div>
+
+      <div class="note">
+        Bản đồ dùng <strong>OpenFreeMap</strong> — miễn phí, không giới hạn request,
+        không cần API key. Dữ liệu từ OpenStreetMap.<br /><br />
+        OpenFreeMap <strong>không có chức năng tìm kiếm</strong>. Ô search quán ăn
+        (yêu cầu số 7) phải tự làm bằng bảng <code>partner_locations</code> trong
+        Postgres, hoặc dùng Nominatim — lưu ý Nominatim là dịch vụ riêng và có giới
+        hạn sử dụng khá chặt.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Bản đồ ----------
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/liberty',
+  center: [106.7009, 10.7769], // TP.HCM
+  zoom: 13,
+});
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+// Nút "về vị trí của tôi" — GPS lấy từ trình duyệt, không liên quan tới OpenFreeMap.
+map.addControl(new maplibregl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true },
+  trackUserLocation: true,
+}), 'top-right');
+
+let marker = null;
+let picked = null;
+
+map.on('click', (e) => {
+  picked = { lat: e.lngLat.lat, lon: e.lngLat.lng };
+  if (marker) marker.remove();
+  marker = new maplibregl.Marker({ color: '#2d7d46' })
+    .setLngLat([picked.lon, picked.lat])
+    .addTo(map);
+
+  document.getElementById('coords').textContent =
+    `latitude  = ${picked.lat.toFixed(6)}\nlongitude = ${picked.lon.toFixed(6)}`;
+});
+
+// ---------- Tạo sự kiện ----------
+const $ = (id) => document.getElementById(id);
+
+function show(el, ok, text) {
+  el.className = 'out ' + (ok ? 'ok' : 'err');
+  el.textContent = text;
+}
+
+$('btnEvent').addEventListener('click', async () => {
+  const out = $('evOut');
+  const server = $('server').value.trim().replace(/\/$/, '');
+  const token = $('token').value.trim();
+  const bizId = $('bizId').value.trim();
+
+  if (!token) return show(out, false, 'Chưa nhập JWT.');
+  if (!bizId) return show(out, false, 'Chưa nhập Business ID.');
+  if (!$('evStart').value || !$('evEnd').value)
+    return show(out, false, 'Chưa chọn thời gian bắt đầu/kết thúc.');
+
+  const body = {
+    title: $('evTitle').value.trim(),
+    body: $('evBody').value.trim(),
+    // datetime-local trả về giờ địa phương không có timezone; new Date() diễn giải
+    // theo múi giờ máy, rồi toISOString() đổi sang UTC đúng như server mong đợi.
+    starts_at: new Date($('evStart').value).toISOString(),
+    ends_at: new Date($('evEnd').value).toISOString(),
+  };
+
+  const btn = $('btnEvent');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${server}/v1/businesses/${bizId}/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    show(out, res.ok && data.success, data.message || `HTTP ${res.status}`);
+  } catch (err) {
+    show(out, false, 'Không gọi được server: ' + err.message +
+      '\n\nNếu lỗi CORS, server Axum cần bật tower-http CorsLayer.');
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

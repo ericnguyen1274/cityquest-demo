@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CityQuest World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/128/three.min.js"></script>
+<style>
+  :root{
+    --sky-top:#7FD4F5;
+    --sky-bot:#FFE3F1;
+    --cream:#FFFBF2;
+    --ink:#2B2140;
+    --coral:#FF6F61;
+    --coral-d:#D14A3E;
+    --gold:#FFC93C;
+    --gold-d:#DE9E00;
+    --mint:#4FE3B0;
+    --mint-d:#1CAE7E;
+    --sky:#4FC3F7;
+    --sky-d:#1E93C2;
+    --bubble:#FF8FC7;
+    --bubble-d:#E25CA0;
+    --line:#2B2140;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+  body{
+    margin:0;min-height:100vh;
+    background:
+      radial-gradient(900px 500px at 20% 0%, #cdeeff 0%, transparent 60%),
+      #eef6fb;
+    font-family:'Nunito',sans-serif;
+    display:flex;align-items:flex-start;justify-content:center;gap:26px;
+    padding:30px 16px 60px;flex-wrap:wrap;color:var(--ink);
+  }
+  .side{width:280px;padding-top:16px;}
+  .side h1{font-family:'Baloo 2',sans-serif;font-size:25px;margin:0 0 8px;color:var(--coral-d);}
+  .side p{font-size:13.5px;line-height:1.6;color:#5b5470;margin:0 0 14px;}
+  .side code{background:#fff;border:1px solid #e2dbf0;padding:1px 6px;border-radius:5px;font-size:12px;color:var(--mint-d);}
+  .side .box{background:#fff;border:2px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:12px;box-shadow:4px 4px 0 var(--line);}
+  .side .box label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a83a0;margin-bottom:6px;}
+  .side .box input{width:100%;border:2px solid #e2dbf0;border-radius:9px;padding:8px 9px;font-size:13px;font-family:'Nunito',sans-serif;}
+  .side .dotrow{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:12px;color:#5b5470;font-weight:700;}
+  .dot{width:9px;height:9px;border-radius:50%;background:#c9c2d8;flex:none;}
+  .dot.up{background:var(--mint);box-shadow:0 0 8px var(--mint);}
+  .dot.down{background:var(--coral);box-shadow:0 0 8px var(--coral);}
+  .side .tip{background:#fff8e2;border:2px dashed var(--gold-d);border-radius:14px;padding:10px 12px;font-size:12.5px;line-height:1.55;color:#7a5c00;}
+
+  /* ===== khung iPhone ===== */
+  .phone{
+    width:368px;height:756px;
+    background:linear-gradient(180deg,#1c1c1e,#0a0a0c);
+    border-radius:52px;padding:12px;
+    box-shadow:0 34px 60px -18px rgba(30,20,50,.45), inset 0 0 0 2px rgba(255,255,255,.06);
+    position:relative;flex:none;
+  }
+  .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:130px;height:24px;background:#0a0a0c;border-radius:0 0 18px 18px;z-index:50;}
+  .screen{
+    width:100%;height:100%;border-radius:38px;overflow:hidden;position:relative;
+    background:linear-gradient(180deg,var(--sky-top),var(--sky-bot) 62%);
+  }
+  .statusbar{position:absolute;top:0;left:0;right:0;padding:14px 22px 0;display:flex;justify-content:space-between;font-size:12px;font-weight:800;color:#233; z-index:40;}
+
+  canvas#world{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+  /* ===== HUD ===== */
+  .hud-top{position:absolute;top:40px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;z-index:30;}
+  .chip{
+    background:rgba(255,251,242,.92);border:2px solid var(--line);border-radius:100px;
+    padding:6px 12px 6px 6px;display:flex;align-items:center;gap:7px;box-shadow:3px 3px 0 rgba(43,33,64,.2);
+  }
+  .chip .av{width:26px;height:26px;border-radius:50%;background:var(--bubble);display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--line);}
+  .chip .nm{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:12.5px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .coins{
+    background:rgba(255,251,242,.92);border:2px solid var(--line);border-radius:100px;padding:6px 12px;
+    font-family:'Baloo 2',sans-serif;font-weight:800;font-size:13px;color:var(--gold-d);
+    display:flex;align-items:center;gap:5px;box-shadow:3px 3px 0 rgba(43,33,64,.2);
+  }
+  .menu-btn{
+    background:rgba(255,251,242,.92);border:2px solid var(--line);border-radius:14px;width:38px;height:38px;
+    display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:3px 3px 0 rgba(43,33,64,.2);cursor:pointer;
+  }
+
+  .nearby-banner{
+    position:absolute;left:14px;right:14px;bottom:150px;z-index:31;
+    background:#fff;border:2.5px solid var(--line);border-radius:18px;padding:10px 12px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    box-shadow:4px 4px 0 rgba(43,33,64,.22);
+    animation:pop .18s ease-out;
+  }
+  @keyframes pop{from{transform:translateY(8px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+  .nearby-banner .txt{font-size:12.5px;font-weight:800;line-height:1.35;}
+  .nearby-banner .txt b{font-family:'Baloo 2',sans-serif;color:var(--coral-d);}
+
+  .toast-wrap{position:absolute;left:14px;right:14px;top:88px;z-index:35;display:flex;flex-direction:column;gap:6px;pointer-events:none;}
+  .toast{
+    background:var(--ink);color:#fff;font-size:12px;font-weight:700;padding:9px 12px;border-radius:12px;
+    box-shadow:3px 3px 0 rgba(0,0,0,.18);animation:pop .15s ease-out;
+  }
+  .toast.ok{background:var(--mint-d);}
+  .toast.err{background:var(--coral-d);}
+
+  /* joystick + action buttons */
+  .controls{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 18px;z-index:30;}
+  .joy-base{
+    width:104px;height:104px;border-radius:50%;
+    background:rgba(255,251,242,.55);border:3px solid rgba(43,33,64,.35);
+    position:relative;touch-action:none;
+  }
+  .joy-stick{
+    width:46px;height:46px;border-radius:50%;background:var(--coral);border:3px solid var(--line);
+    position:absolute;top:29px;left:29px;box-shadow:2px 2px 0 rgba(0,0,0,.2);
+  }
+  .action-col{display:flex;flex-direction:column;gap:10px;align-items:center;}
+  .action-btn{
+    width:56px;height:56px;border-radius:50%;border:3px solid var(--line);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:3px 3px 0 rgba(43,33,64,.25);
+  }
+  .action-btn.wardrobe{background:var(--bubble);}
+  .action-btn.wallet{background:var(--gold);}
+  .action-btn.wave{background:var(--sky);}
+
+  /* ===== bottom sheet ===== */
+  .sheet-overlay{position:absolute;inset:0;background:rgba(20,15,35,.4);z-index:60;opacity:0;pointer-events:none;transition:opacity .18s;}
+  .sheet-overlay.show{opacity:1;pointer-events:auto;}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;max-height:78%;
+    background:var(--cream);border-radius:26px 26px 0 0;border:3px solid var(--line);border-bottom:none;
+    z-index:61;transform:translateY(100%);transition:transform .22s cubic-bezier(.2,.9,.3,1.3);
+    display:flex;flex-direction:column;
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet-handle{width:42px;height:5px;background:#d9d0ea;border-radius:10px;margin:10px auto 6px;}
+  .sheet-head{display:flex;justify-content:space-between;align-items:center;padding:2px 18px 8px;}
+  .sheet-head h2{font-family:'Baloo 2',sans-serif;font-size:18px;margin:0;color:var(--ink);}
+  .sheet-close{width:28px;height:28px;border-radius:50%;background:#eee6fb;border:2px solid var(--line);font-size:13px;cursor:pointer;}
+  .sheet-body{overflow-y:auto;padding:2px 18px 22px;}
+  .sheet-body::-webkit-scrollbar{width:0;}
+
+  .tabrow{display:flex;background:#eee6fb;border-radius:12px;padding:3px;margin-bottom:12px;}
+  .tabrow button{flex:1;border:none;background:none;padding:8px 4px;font-weight:800;font-size:11.5px;border-radius:9px;cursor:pointer;color:#8a83a0;font-family:'Nunito',sans-serif;}
+  .tabrow button.active{background:#fff;color:var(--ink);box-shadow:2px 2px 0 rgba(43,33,64,.12);}
+
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:11px;font-weight:800;color:#8a83a0;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input,.field select{width:100%;padding:10px 11px;border-radius:11px;border:2px solid #e2dbf0;font-size:14px;font-family:'Nunito',sans-serif;background:#fff;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--coral);}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:13px;border:2.5px solid var(--line);font-family:'Baloo 2',sans-serif;font-weight:700;font-size:14px;cursor:pointer;width:100%;box-shadow:3px 3px 0 rgba(43,33,64,.25);}
+  .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(43,33,64,.25);}
+  .btn-coral{background:var(--coral);color:#fff;}
+  .btn-mint{background:var(--mint);color:#08281f;}
+  .btn-gold{background:var(--gold);color:#4a3400;}
+  .btn-ghost{background:#fff;color:var(--ink);}
+  .btn:disabled{opacity:.4;cursor:default;}
+  .btn-sm{padding:7px 10px;font-size:12px;width:auto;box-shadow:2px 2px 0 rgba(43,33,64,.25);}
+
+  .msg{font-size:12px;font-weight:700;padding:9px 11px;border-radius:11px;margin-bottom:10px;line-height:1.5;}
+  .msg.ok{background:#e1faf0;color:#0f6b4c;}
+  .msg.err{background:#ffe7e3;color:#a3382a;}
+  .msg.info{background:#eaf2ff;color:#2b5578;}
+
+  .item-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .item-card{background:#fff;border:2.5px solid #ece4f7;border-radius:15px;padding:11px;text-align:left;}
+  .item-card.equipped{border-color:var(--mint-d);background:#effaf5;}
+  .item-card .iname{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:13.5px;}
+  .item-card .islot{font-size:10px;color:#8a83a0;text-transform:uppercase;letter-spacing:.05em;margin:2px 0 8px;font-weight:800;}
+  .item-card .icost{font-family:'Baloo 2',sans-serif;color:var(--gold-d);font-size:13px;margin-bottom:8px;}
+  .swatch{width:20px;height:20px;border-radius:6px;display:inline-block;border:2px solid var(--line);vertical-align:-5px;margin-right:6px;}
+
+  .voucher{background:linear-gradient(135deg,#fff7de,#fff);border:2.5px dashed var(--gold-d);border-radius:15px;padding:12px;margin-bottom:9px;}
+  .voucher .vtitle{font-family:'Baloo 2',sans-serif;font-size:14.5px;}
+  .voucher .vcode{font-size:11.5px;color:#8a83a0;margin-top:3px;font-weight:700;}
+  .voucher.used{opacity:.45;}
+
+  .place-row{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:2px solid #f2ecf9;gap:8px;}
+  .place-row:last-child{border-bottom:none;}
+  .place-row .pname{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:13px;}
+  .place-row .pmeta{font-size:10.5px;color:#8a83a0;font-weight:700;}
+
+  .empty{text-align:center;padding:26px 10px;color:#8a83a0;font-size:12.5px;font-weight:700;}
+
+  /* ===== màn đăng nhập (phủ full screen) ===== */
+  .auth-screen{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;justify-content:center;padding:26px 22px;background:linear-gradient(180deg,var(--sky-top),var(--sky-bot) 70%);}
+  .auth-logo{text-align:center;margin-bottom:18px;}
+  .auth-logo .blob{width:78px;height:78px;border-radius:50%;background:var(--coral);border:3px solid var(--line);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:36px;box-shadow:4px 4px 0 rgba(43,33,64,.25);}
+  .auth-logo h1{font-family:'Baloo 2',sans-serif;font-size:24px;margin:0;color:var(--ink);}
+  .auth-logo p{font-size:12.5px;color:#5b5470;margin:4px 0 0;font-weight:700;}
+  .auth-card{background:rgba(255,251,242,.95);border:3px solid var(--line);border-radius:22px;padding:16px;box-shadow:5px 5px 0 rgba(43,33,64,.2);}
+
+  ::selection{background:var(--gold);color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div class="side">
+  <h1>CityQuest World</h1>
+  <p>Bản đồ 3D kiểu Play Together — avatar mặc đúng đồ trong tủ đồ, di chuyển bằng joystick, và multiplayer <b>thật</b>: mở file này ở tab/thiết bị khác, đăng nhập tài khoản khác, hai avatar sẽ thấy nhau.</p>
+  <div class="box">
+    <label>Địa chỉ server</label>
+    <input id="serverUrl" value="http://localhost:44321">
+    <div class="dotrow"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra kết nối</span></div>
+  </div>
+  <div class="tip">
+    💡 Mẹo demo 2 người chơi: mở link/file này thêm 1 tab nữa (hoặc gửi qua điện thoại khác cùng mạng, đổi "Địa chỉ server" thành IP máy chạy server), đăng ký 2 tài khoản khác nhau — cả hai cùng đi lại trên bản đồ 3D và thấy nhau real-time (server tự xoá người sau 2 phút không hoạt động).
+  </div>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="statusbar"><span>9:41</span><span>●●● 5G 🔋</span></div>
+    <canvas id="world"></canvas>
+
+    <div class="hud-top" id="hudTop" style="display:none">
+      <div class="chip"><div class="av" id="hudAvatar">🙂</div><div class="nm" id="hudName">—</div></div>
+      <div class="coins">🪙 <span id="hudCoins">0</span></div>
+      <div class="menu-btn" id="menuBtn">☰</div>
+    </div>
+
+    <div class="toast-wrap" id="toastWrap"></div>
+    <div id="nearbyBanner"></div>
+
+    <div class="controls" id="controls" style="display:none">
+      <div class="joy-base" id="joyBase"><div class="joy-stick" id="joyStick"></div></div>
+      <div class="action-col">
+        <div class="action-btn wardrobe" id="btnWardrobe" title="Tủ đồ">👕</div>
+        <div class="action-btn wallet" id="btnWallet" title="Ví">🎟️</div>
+        <div class="action-btn wave" id="btnBiz" title="Quán của tôi">🏪</div>
+      </div>
+    </div>
+
+    <div class="sheet-overlay" id="sheetOverlay"></div>
+    <div class="sheet" id="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 id="sheetTitle">—</h2><button class="sheet-close" id="sheetClose">✕</button></div>
+      <div class="sheet-body" id="sheetBody"></div>
+    </div>
+
+    <div class="auth-screen" id="authScreen">
+      <div class="auth-logo">
+        <div class="blob">🗺️</div>
+        <h1>CityQuest World</h1>
+        <p>Khám phá thành phố, mặc đồ, đổi quà — cùng bạn bè</p>
+      </div>
+      <div class="auth-card">
+        <div class="tabrow">
+          <button id="authTabLogin" class="active">Đăng nhập</button>
+          <button id="authTabReg">Đăng ký</button>
+        </div>
+        <div id="authMsg"></div>
+        <div class="field" id="authNameField" style="display:none"><label>Tên hiển thị</label><input id="authName" placeholder="Nguyễn Văn A"></div>
+        <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="ban@vidu.com"></div>
+        <div class="field"><label>Mật khẩu</label><input id="authPass" type="password" placeholder="Tối thiểu 6 ký tự"></div>
+        <button class="btn btn-coral" id="authSubmit">Đăng nhập</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const elc = (tag, attrs={}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const k in attrs) {
+    if (k === 'class') n.className = attrs[k];
+    else if (k === 'html') n.innerHTML = attrs[k];
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), attrs[k]);
+    else n.setAttribute(k, attrs[k]);
+  }
+  kids.forEach(k => { if (typeof k === 'string') n.appendChild(document.createTextNode(k)); else if (k) n.appendChild(k); });
+  return n;
+};
+
+// ================= cấu hình quy đổi toạ độ thế giới 3D <-> lat/lon =================
+const CENTER_LAT = 10.7755, CENTER_LON = 106.6995, GEO_SCALE = 6000;
+function geoToWorld(lat, lon){ return { x: (lon - CENTER_LON) * GEO_SCALE, z: -(lat - CENTER_LAT) * GEO_SCALE }; }
+function worldToGeo(x, z){ return { lat: CENTER_LAT - z / GEO_SCALE, lon: CENTER_LON + x / GEO_SCALE }; }
+
+const ITEM_META = {
+  ao_do:   { slot:'ao',   color:0xFF6F61, label:'Áo đỏ' },
+  ao_den:  { slot:'ao',   color:0x2B2140, label:'Áo đen' },
+  quan_do: { slot:'quan', color:0xFF6F61, label:'Quần đỏ' },
+  quan_den:{ slot:'quan', color:0x2B2140, label:'Quần đen' },
+  non:     { slot:'non',  color:0xFFC93C, label:'Nón' },
+  giay:    { slot:'giay', color:0x4FC3F7, label:'Giày' },
+};
+
+// ================= state =================
+let state = {
+  token: localStorage.getItem('cq_token') || null,
+  userId: null,
+  displayName: null,
+  points: 0,
+  partners: [],
+  wardrobe: null, // { points, items[] }
+};
+
+function decodeJwtSub(token){
+  try {
+    const payload = token.split('.')[1];
+    const json = JSON.parse(atob(payload.replace(/-/g,'+').replace(/_/g,'/')));
+    return json.sub;
+  } catch(e){ return null; }
+}
+
+function serverUrl(){ return $('#serverUrl').value.replace(/\/$/,''); }
+
+async function api(path, opts={}) {
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(serverUrl() + path, Object.assign({}, opts, {headers}));
+  let body = null;
+  try { body = await res.json(); } catch(e) {}
+  return { ok: res.ok, status: res.status, body };
+}
+
+async function pingServer() {
+  try {
+    const r = await fetch(serverUrl() + '/v1/partners');
+    $('#statusDot').className = 'dot up';
+    $('#statusText').textContent = 'Đã kết nối server';
+  } catch(e) {
+    $('#statusDot').className = 'dot down';
+    $('#statusText').textContent = 'Không gọi được (đã cargo run chưa?)';
+  }
+}
+$('#serverUrl').addEventListener('change', pingServer);
+pingServer();
+
+function toast(text, kind){
+  const t = elc('div', {class:'toast' + (kind ? ' '+kind : '')}, text);
+  $('#toastWrap').appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+// ================= Auth =================
+let authMode = 'login';
+$('#authTabLogin').onclick = () => { authMode='login'; $('#authTabLogin').classList.add('active'); $('#authTabReg').classList.remove('active'); $('#authNameField').style.display='none'; $('#authSubmit').textContent='Đăng nhập'; };
+$('#authTabReg').onclick = () => { authMode='register'; $('#authTabReg').classList.add('active'); $('#authTabLogin').classList.remove('active'); $('#authNameField').style.display='block'; $('#authSubmit').textContent='Đăng ký (tặng 400 điểm)'; };
+
+$('#authSubmit').onclick = async () => {
+  const btn = $('#authSubmit'); btn.disabled = true;
+  const email = $('#authEmail').value.trim();
+  const password = $('#authPass').value;
+  const display_name = $('#authName').value.trim();
+  const path = authMode === 'login' ? '/v1/auth/login' : '/v1/auth/register';
+  const payload = authMode === 'login' ? {email,password} : {email,password,display_name};
+  const r = await api(path, {method:'POST', body: JSON.stringify(payload)});
+  btn.disabled = false;
+  if (r.ok && r.body && r.body.success) {
+    state.token = r.body.token;
+    state.userId = decodeJwtSub(state.token);
+    localStorage.setItem('cq_token', state.token);
+    await enterWorld();
+  } else {
+    $('#authMsg').innerHTML = '';
+    $('#authMsg').appendChild(elc('div', {class:'msg err'}, (r.body && r.body.message) || 'Có lỗi, kiểm tra lại server.'));
+  }
+};
+
+function logout(){
+  state.token = null; state.userId = null;
+  localStorage.removeItem('cq_token');
+  clearInterval(presenceTimer);
+  closeSheet();
+  $('#authScreen').style.display = 'flex';
+  $('#hudTop').style.display = 'none';
+  $('#controls').style.display = 'none';
+}
+
+// ================= vào thế giới =================
+async function enterWorld(){
+  const w = await api('/v1/wardrobe');
+  if (!w.ok) { toast('Không tải được dữ liệu người chơi', 'err'); return; }
+  state.wardrobe = w.body;
+  state.points = w.body.points;
+
+  // Lấy display_name qua danh sách presence sau khi post lần đầu (server biết
+  // tên qua user, nhưng để hiện ngay không cần chờ) — tạm dùng phần trước @ nếu
+  // trước đó đăng ký, ta có ô tên; nếu login thì hỏi lại qua presence lần đầu.
+  state.displayName = $('#authName').value.trim() || null;
+
+  $('#authScreen').style.display = 'none';
+  $('#hudTop').style.display = 'flex';
+  $('#controls').style.display = 'flex';
+
+  initWorldIfNeeded();
+  updateHud();
+
+  await postPresence();
+  presenceTimer = setInterval(pollLoop, 1500);
+  pollLoop();
+}
+
+function updateHud(){
+  $('#hudCoins').textContent = state.points;
+  if (state.displayName) $('#hudName').textContent = state.displayName;
+}
+
+// ================= Three.js world =================
+let renderer, scene, camera, clock;
+let playerGroup, playerPos = {x:0,z:0}, playerVel = {x:0,z:0};
+let others = {}; // user_id -> { group, targetPos }
+let plinths = [];
+let worldReady = false;
+
+function makeLabelSprite(text, bg){
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 256; canvas.height = 72;
+  ctx.font = '700 34px Baloo 2, sans-serif';
+  const w = ctx.measureText(text).width;
+  const padX = 22;
+  const boxW = Math.min(256, w + padX*2);
+  ctx.clearRect(0,0,256,72);
+  ctx.fillStyle = bg || '#2B2140';
+  roundRect(ctx, 128-boxW/2, 14, boxW, 44, 20);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 14+22);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest:false });
+  const spr = new THREE.Sprite(mat);
+  spr.scale.set(3.2, 0.9, 1);
+  return spr;
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function buildAvatar(outfit, isSelf){
+  const g = new THREE.Group();
+  const skin = new THREE.MeshLambertMaterial({ color: 0xFFD8B5 });
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), skin);
+  head.position.y = 1.85;
+  g.add(head);
+
+  const shirtColor = (outfit && outfit.ao && ITEM_META[outfit.ao]) ? ITEM_META[outfit.ao].color : 0xFFE3D0;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 0.85, 10), new THREE.MeshLambertMaterial({ color: shirtColor }));
+  body.position.y = 1.15;
+  g.add(body);
+
+  const pantsColor = (outfit && outfit.quan && ITEM_META[outfit.quan]) ? ITEM_META[outfit.quan].color : 0xD9D2E8;
+  const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.55, 8), new THREE.MeshLambertMaterial({ color: pantsColor }));
+  legs.position.y = 0.4;
+  g.add(legs);
+
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.55, 12), new THREE.MeshLambertMaterial({ color: ITEM_META.non.color }));
+  hat.position.y = 2.5;
+  hat.visible = !!(outfit && outfit.non);
+  hat.name = 'hat';
+  g.add(hat);
+
+  const shoeMat = new THREE.MeshLambertMaterial({ color: ITEM_META.giay.color });
+  const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.28,0.2,0.42), shoeMat);
+  shoeL.position.set(-0.2, 0.08, 0.08);
+  const shoeR = shoeL.clone(); shoeR.position.x = 0.2;
+  shoeL.visible = shoeR.visible = !!(outfit && outfit.giay);
+  shoeL.name = 'shoeL'; shoeR.name = 'shoeR';
+  g.add(shoeL); g.add(shoeR);
+
+  g.userData = { head, body, legs, hat, shoeL, shoeR };
+
+  const label = makeLabelSprite(isSelf ? 'Bạn' : '…', isSelf ? '#D14A3E' : '#2B2140');
+  label.position.y = 2.7;
+  label.name = 'label';
+  g.add(label);
+
+  return g;
+}
+
+function applyOutfitToAvatar(group, outfit){
+  const u = group.userData;
+  const shirtColor = (outfit && outfit.ao && ITEM_META[outfit.ao]) ? ITEM_META[outfit.ao].color : 0xFFE3D0;
+  const pantsColor = (outfit && outfit.quan && ITEM_META[outfit.quan]) ? ITEM_META[outfit.quan].color : 0xD9D2E8;
+  u.body.material.color.setHex(shirtColor);
+  u.legs.material.color.setHex(pantsColor);
+  u.hat.visible = !!(outfit && outfit.non);
+  u.shoeL.visible = u.shoeR.visible = !!(outfit && outfit.giay);
+}
+
+function currentOutfitFromWardrobe(){
+  const out = {};
+  if (!state.wardrobe) return out;
+  state.wardrobe.items.forEach(it => { if (it.equipped) out[it.slot] = it.id; });
+  return out;
+}
+
+function initWorldIfNeeded(){
+  if (worldReady) { refreshPlayerOutfit(); return; }
+  worldReady = true;
+
+  const canvas = $('#world');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  scene = new THREE.Scene();
+  scene.background = null;
+
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+  clock = new THREE.Clock();
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x88a888, 1.0);
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(20, 30, 10);
+  scene.add(dir);
+
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(60, 48),
+    new THREE.MeshLambertMaterial({ color: 0x8fe08a })
+  );
+  ground.rotation.x = -Math.PI/2;
+  scene.add(ground);
+
+  const ring = new THREE.Mesh(new THREE.RingGeometry(59.4, 60.2, 48), new THREE.MeshBasicMaterial({ color:0x5fc767, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI/2; ring.position.y = 0.01;
+  scene.add(ring);
+
+  // đường viền nhẹ dạng caro cho đỡ trống
+  for (let i=-50;i<=50;i+=10){
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,0.02,-55), new THREE.Vector3(i,0.02,55)]);
+    scene.add(new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color:0x7ccB7a, transparent:true, opacity:.35 })));
+    const lineGeo2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-55,0.02,i), new THREE.Vector3(55,0.02,i)]);
+    scene.add(new THREE.Line(lineGeo2, new THREE.LineBasicMaterial({ color:0x7ccB7a, transparent:true, opacity:.35 })));
+  }
+
+  playerGroup = buildAvatar(currentOutfitFromWardrobe(), true);
+  scene.add(playerGroup);
+
+  resizeRenderer();
+  window.addEventListener('resize', resizeRenderer);
+
+  loadPartnerPlinths();
+  animate();
+}
+
+function refreshPlayerOutfit(){
+  if (!playerGroup) return;
+  applyOutfitToAvatar(playerGroup, currentOutfitFromWardrobe());
+}
+
+function resizeRenderer(){
+  const el = $('#world');
+  const w = el.clientWidth, h = el.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+}
+
+async function loadPartnerPlinths(){
+  const r = await api('/v1/partners');
+  if (!r.ok || !r.body) return;
+  state.partners = r.body;
+  plinths.forEach(p => scene.remove(p.mesh));
+  plinths = [];
+  r.body.forEach(p => {
+    const pos = geoToWorld(p.latitude, p.longitude);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,0.3,20), new THREE.MeshLambertMaterial({ color: 0xFFC93C }));
+    disc.position.set(pos.x, 0.15, pos.z);
+    scene.add(disc);
+    const label = makeLabelSprite(p.name, '#D14A3E');
+    label.position.set(pos.x, 1.6, pos.z);
+    scene.add(label);
+    plinths.push({ id: p.id, name: p.name, x: pos.x, z: pos.z, mesh: disc });
+  });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  const speed = 9;
+  playerPos.x += playerVel.x * speed * dt;
+  playerPos.z += playerVel.z * speed * dt;
+  playerPos.x = Math.max(-56, Math.min(56, playerPos.x));
+  playerPos.z = Math.max(-56, Math.min(56, playerPos.z));
+
+  playerGroup.position.set(playerPos.x, 0, playerPos.z);
+  if (playerVel.x !== 0 || playerVel.z !== 0) {
+    const angle = Math.atan2(playerVel.x, playerVel.z);
+    playerGroup.rotation.y += (angle - playerGroup.rotation.y) * 0.2;
+    const bob = Math.sin(performance.now()/120) * 0.06;
+    playerGroup.position.y = Math.abs(bob);
+  }
+
+  const camOffset = new THREE.Vector3(0, 15, 13);
+  const desiredCam = new THREE.Vector3(playerPos.x, 0, playerPos.z).add(camOffset);
+  camera.position.lerp(desiredCam, 0.08);
+  camera.lookAt(playerPos.x, 1, playerPos.z);
+
+  for (const uid in others) {
+    const o = others[uid];
+    o.group.position.x += (o.targetX - o.group.position.x) * 0.15;
+    o.group.position.z += (o.targetZ - o.group.position.z) * 0.15;
+  }
+
+  checkNearby();
+  renderer.render(scene, camera);
+}
+
+function checkNearby(){
+  let nearest = null, nearestD = 999;
+  plinths.forEach(p => {
+    const d = Math.hypot(p.x - playerPos.x, p.z - playerPos.z);
+    if (d < nearestD) { nearestD = d; nearest = p; }
+  });
+  const banner = $('#nearbyBanner');
+  if (nearest && nearestD < 4.5) {
+    banner.innerHTML = '';
+    const box = elc('div', {class:'nearby-banner'},
+      elc('div', {class:'txt'}, 'Bạn đang ở gần ', elc('b', {}, nearest.name)),
+      elc('button', {class:'btn btn-coral btn-sm', onclick: () => doCheckin(nearest.id)}, 'Check-in')
+    );
+    banner.appendChild(box);
+  } else {
+    banner.innerHTML = '';
+  }
+}
+
+async function doCheckin(partnerId){
+  const geo = worldToGeo(playerPos.x, playerPos.z);
+  const r = await api('/v1/checkin', {method:'POST', body: JSON.stringify({
+    partner_id: partnerId, latitude: geo.lat, longitude: geo.lon,
+    accuracy_meters: 5, client_timestamp_unix: Math.floor(Date.now()/1000)
+  })});
+  if (r.ok && r.body && r.body.success) {
+    toast('✅ Check-in +' + r.body.points_awarded + ' điểm', 'ok');
+    state.points += r.body.points_awarded;
+    updateHud();
+  } else {
+    toast('❌ ' + ((r.body && r.body.message) || 'Check-in thất bại'), 'err');
+  }
+}
+
+// ================= joystick =================
+(function setupJoystick(){
+  const base = $('#joyBase'), stick = $('#joyStick');
+  let dragging = false, originX=0, originY=0;
+  const maxR = 30;
+
+  function setStick(dx,dy){
+    stick.style.left = (29+dx) + 'px';
+    stick.style.top = (29+dy) + 'px';
+  }
+  function reset(){
+    dragging = false;
+    setStick(0,0);
+    playerVel.x = 0; playerVel.z = 0;
+  }
+  function handleMove(clientX, clientY){
+    const rect = base.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    let dx = clientX - cx, dy = clientY - cy;
+    const dist = Math.min(Math.hypot(dx,dy), maxR);
+    const ang = Math.atan2(dy,dx);
+    dx = Math.cos(ang)*dist; dy = Math.sin(ang)*dist;
+    setStick(dx,dy);
+    playerVel.x = dx / maxR;
+    playerVel.z = dy / maxR;
+  }
+
+  base.addEventListener('pointerdown', e => { dragging = true; base.setPointerCapture(e.pointerId); handleMove(e.clientX, e.clientY); });
+  base.addEventListener('pointermove', e => { if (dragging) handleMove(e.clientX, e.clientY); });
+  base.addEventListener('pointerup', reset);
+  base.addEventListener('pointercancel', reset);
+})();
+
+// ================= presence polling (multiplayer thật) =================
+let presenceTimer = null;
+
+async function postPresence(){
+  const geo = worldToGeo(playerPos.x, playerPos.z);
+  await api('/v1/presence', {method:'POST', body: JSON.stringify({ latitude: geo.lat, longitude: geo.lon })});
+}
+
+async function pollLoop(){
+  await postPresence();
+  const r = await api('/v1/presence');
+  if (!r.ok || !r.body) return;
+
+  const seen = new Set();
+  r.body.forEach(p => {
+    seen.add(p.user_id);
+    if (p.user_id === state.userId) {
+      // đây là chính mình — chỉ dùng để đồng bộ tên hiển thị (vd sau khi login lại)
+      if (!state.displayName) { state.displayName = p.display_name; updateHud(); }
+      const label = playerGroup.getObjectByName('label');
+      return;
+    }
+    const pos = geoToWorld(p.latitude, p.longitude);
+    if (!others[p.user_id]) {
+      const group = buildAvatar(p.outfit, false);
+      const lbl = group.getObjectByName('label');
+      group.remove(lbl);
+      group.add(makeLabelSprite(p.display_name, '#1E93C2'));
+      group.position.set(pos.x, 0, pos.z);
+      scene.add(group);
+      others[p.user_id] = { group, targetX: pos.x, targetZ: pos.z, outfitKey: JSON.stringify(p.outfit) };
+    } else {
+      others[p.user_id].targetX = pos.x;
+      others[p.user_id].targetZ = pos.z;
+      const key = JSON.stringify(p.outfit);
+      if (others[p.user_id].outfitKey !== key) {
+        applyOutfitToAvatar(others[p.user_id].group, p.outfit);
+        others[p.user_id].outfitKey = key;
+      }
+    }
+  });
+
+  for (const uid in others) {
+    if (!seen.has(uid)) {
+      scene.remove(others[uid].group);
+      delete others[uid];
+    }
+  }
+}
+
+// ================= bottom sheet =================
+function openSheet(title, bodyBuilder){
+  $('#sheetTitle').textContent = title;
+  const body = $('#sheetBody');
+  body.innerHTML = '';
+  bodyBuilder(body);
+  $('#sheetOverlay').classList.add('show');
+  $('#sheet').classList.add('show');
+}
+function closeSheet(){
+  $('#sheetOverlay').classList.remove('show');
+  $('#sheet').classList.remove('show');
+}
+$('#sheetClose').onclick = closeSheet;
+$('#sheetOverlay').onclick = closeSheet;
+
+$('#menuBtn').onclick = () => openSheet('Menu', (body) => {
+  body.appendChild(elc('button', {class:'btn btn-ghost', style:'margin-bottom:8px', onclick: () => { closeSheet(); openWardrobeSheet(); }}, '👕 Tủ đồ'));
+  body.appendChild(elc('button', {class:'btn btn-ghost', style:'margin-bottom:8px', onclick: () => { closeSheet(); openVoucherSheet(); }}, '🎟️ Ví voucher'));
+  body.appendChild(elc('button', {class:'btn btn-ghost', style:'margin-bottom:8px', onclick: () => { closeSheet(); openBizSheet(); }}, '🏪 Quán của tôi'));
+  body.appendChild(elc('button', {class:'btn btn-ghost', style:'margin-bottom:8px', onclick: () => { closeSheet(); openNotifsSheet(); }}, '🔔 Thông báo'));
+  body.appendChild(elc('button', {class:'btn btn-coral', onclick: logout}, 'Đăng xuất'));
+});
+$('#btnWardrobe').onclick = openWardrobeSheet;
+$('#btnWallet').onclick = openVoucherSheet;
+$('#btnBiz').onclick = openBizSheet;
+
+// ---- tủ đồ ----
+function openWardrobeSheet(){
+  openSheet('👕 Tủ đồ', async (body) => {
+    body.appendChild(elc('div', {class:'empty'}, 'Đang tải…'));
+    const r = await api('/v1/wardrobe');
+    body.innerHTML = '';
+    if (!r.ok) { body.appendChild(elc('div', {class:'msg err'}, 'Không tải được.')); return; }
+    state.wardrobe = r.body; state.points = r.body.points; updateHud();
+    const msgBox = elc('div'); body.appendChild(msgBox);
+    const grid = elc('div', {class:'item-grid'});
+    r.body.items.forEach(it => {
+      const meta = ITEM_META[it.id] || {};
+      const card = elc('div', {class:'item-card' + (it.equipped ? ' equipped' : '')});
+      card.appendChild(elc('div', {class:'iname'}, elc('span',{class:'swatch', style:`background:#${(meta.color||0xcccccc).toString(16).padStart(6,'0')}`}), it.name));
+      card.appendChild(elc('div', {class:'islot'}, it.slot + (it.equipped ? ' · đang mặc' : '')));
+      card.appendChild(elc('div', {class:'icost'}, '🪙 ' + it.cost));
+      let btn;
+      if (!it.owned) btn = elc('button', {class:'btn btn-coral btn-sm', onclick: async () => { await shopAction('/v1/shop/buy', it.id, msgBox); openWardrobeSheet(); }}, 'Mua');
+      else if (!it.equipped) btn = elc('button', {class:'btn btn-mint btn-sm', onclick: async () => { await shopAction('/v1/shop/equip', it.id, msgBox); openWardrobeSheet(); }}, 'Mặc vào');
+      else btn = elc('button', {class:'btn btn-ghost btn-sm', disabled:'true'}, 'Đang mặc');
+      card.appendChild(btn);
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  });
+}
+
+async function shopAction(path, item_id, msgBox){
+  const r = await api(path, {method:'POST', body: JSON.stringify({item_id})});
+  if (r.ok && r.body && r.body.success) {
+    if (r.body.combo_unlocked) toast('🎉 Nhận voucher: ' + r.body.combo_unlocked.voucher_title, 'ok');
+    else toast('✅ Thành công', 'ok');
+    const w = await api('/v1/wardrobe');
+    if (w.ok) { state.wardrobe = w.body; state.points = w.body.points; updateHud(); refreshPlayerOutfit(); }
+  } else {
+    toast('❌ ' + ((r.body && r.body.message) || 'Không thực hiện được'), 'err');
+  }
+}
+
+// ---- ví / voucher ----
+function openVoucherSheet(){
+  openSheet('🎟️ Ví voucher', async (body) => {
+    body.appendChild(elc('div', {class:'empty'}, 'Đang tải…'));
+    const r = await api('/v1/vouchers');
+    body.innerHTML = '';
+    if (r.ok && r.body) {
+      if (!r.body.length) body.appendChild(elc('div', {class:'empty'}, 'Chưa có voucher — mua đủ đồ ở tủ đồ để nhận combo.'));
+      r.body.forEach(v => {
+        const card = elc('div', {class:'voucher' + (v.used ? ' used' : '')});
+        card.appendChild(elc('div', {class:'vtitle'}, v.title));
+        card.appendChild(elc('div', {class:'vcode'}, 'Mã: ' + v.code + (v.used ? ' · Đã dùng' : '')));
+        body.appendChild(card);
+      });
+    }
+    body.appendChild(elc('h2', {class:'sheet-title', style:'font-family:Baloo 2;font-size:15px;margin:14px 0 8px;'}, '📷 Quét mã (nhân viên/chủ quán)'));
+    const codeInput = elc('input', {placeholder:'Nhập mã voucher…'});
+    body.appendChild(elc('div', {class:'field'}, codeInput));
+    const redeemMsg = elc('div'); body.appendChild(redeemMsg);
+    body.appendChild(elc('button', {class:'btn btn-gold', onclick: async () => {
+      const r2 = await api('/v1/vouchers/redeem', {method:'POST', body: JSON.stringify({code: codeInput.value.trim()})});
+      redeemMsg.innerHTML = '';
+      redeemMsg.appendChild(elc('div', {class:'msg ' + (r2.body && r2.body.success ? 'ok':'err')}, (r2.body && r2.body.message) || 'Lỗi kết nối'));
+    }}, 'Đổi quà'));
+  });
+}
+
+// ---- thông báo ----
+function openNotifsSheet(){
+  openSheet('🔔 Thông báo', async (body) => {
+    body.appendChild(elc('div', {class:'empty'}, 'Đang tải…'));
+    const r = await api('/v1/notifications');
+    body.innerHTML = '';
+    if (r.ok && r.body) {
+      if (!r.body.length) body.appendChild(elc('div', {class:'empty'}, 'Chưa có thông báo nào.'));
+      r.body.forEach(n => {
+        const card = elc('div', {class:'voucher'});
+        card.appendChild(elc('div', {class:'vtitle'}, n.title));
+        card.appendChild(elc('div', {class:'vcode'}, n.body));
+        body.appendChild(card);
+      });
+    }
+  });
+}
+
+// ---- quán chủ ----
+function openBizSheet(){
+  openSheet('🏪 Quán của tôi', async (body) => {
+    body.appendChild(elc('div', {class:'empty'}, 'Đang tải…'));
+    const mine = await api('/v1/businesses/mine');
+    const partners = await api('/v1/partners');
+    body.innerHTML = '';
+
+    if (mine.ok && mine.body && mine.body.length) {
+      mine.body.forEach(b => {
+        const card = elc('div', {class:'voucher'});
+        card.appendChild(elc('div', {class:'vtitle'}, b.name + ' · ' + b.my_role));
+        card.appendChild(elc('div', {class:'vcode'}, b.category + (b.partner_id ? ' · ' + b.partner_id : '')));
+        body.appendChild(card);
+      });
+    } else {
+      body.appendChild(elc('div', {class:'empty'}, 'Bạn chưa quản lý quán nào.'));
+    }
+
+    body.appendChild(elc('h2', {style:'font-family:Baloo 2;font-size:15px;margin:14px 0 8px;'}, '+ Tạo quán mới'));
+    const nameF = elc('input', {placeholder:'Tên quán'});
+    const catF = elc('select', {}, elc('option',{value:'quan_an'},'Quán ăn'), elc('option',{value:'quan_nuoc'},'Quán nước'), elc('option',{value:'tiem_mo_hinh'},'Tiệm mô hình'), elc('option',{value:'khac'},'Khác'));
+    const partnerF = elc('select', {}, elc('option', {value:''}, '— không gắn điểm GPS —'));
+    (partners.body||[]).forEach(p => partnerF.appendChild(elc('option', {value:p.id}, p.name)));
+    const comboF = elc('select', {}, elc('option',{value:''},'— không gắn combo —'), elc('option',{value:'coffee_black'},'coffee_black'));
+    body.appendChild(elc('div', {class:'field'}, nameF));
+    body.appendChild(elc('div', {class:'field'}, catF));
+    body.appendChild(elc('div', {class:'field'}, partnerF));
+    body.appendChild(elc('div', {class:'field'}, comboF));
+    const bizMsg = elc('div'); body.appendChild(bizMsg);
+    body.appendChild(elc('button', {class:'btn btn-coral', onclick: async () => {
+      const r = await api('/v1/businesses', {method:'POST', body: JSON.stringify({ name:nameF.value.trim(), category:catF.value, partner_id: partnerF.value||null, combo_id: comboF.value||null })});
+      bizMsg.innerHTML = '';
+      bizMsg.appendChild(elc('div', {class:'msg ' + (r.body && r.body.success ? 'ok':'err')}, (r.body && r.body.message) || 'Lỗi kết nối'));
+      if (r.body && r.body.success) openBizSheet();
+    }}, 'Tạo quán'));
+  });
+}
+
+// ================= khởi động =================
+if (state.token) {
+  state.userId = decodeJwtSub(state.token);
+  enterWorld();
+}
+</script>
+</body>
+</html>
