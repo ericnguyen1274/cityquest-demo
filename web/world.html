@@ -276,6 +276,7 @@ const elc = (tag, attrs={}, ...kids) => {
 
 // ================= cấu hình quy đổi toạ độ thế giới 3D <-> lat/lon =================
 const CENTER_LAT = 10.7755, CENTER_LON = 106.6995, GEO_SCALE = 6000;
+const CHECKIN_ACCURACY_METERS = 5;
 function geoToWorld(lat, lon){ return { x: (lon - CENTER_LON) * GEO_SCALE, z: -(lat - CENTER_LAT) * GEO_SCALE }; }
 function worldToGeo(x, z){ return { lat: CENTER_LAT - z / GEO_SCALE, lon: CENTER_LON + x / GEO_SCALE }; }
 
@@ -334,6 +335,12 @@ function toast(text, kind){
   const t = elc('div', {class:'toast' + (kind ? ' '+kind : '')}, text);
   $('#toastWrap').appendChild(t);
   setTimeout(() => t.remove(), 2600);
+}
+function haversineMeters(lat1,lon1,lat2,lon2){
+  const R=6371000, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
 }
 
 // ================= Auth =================
@@ -405,6 +412,7 @@ let renderer, scene, camera, clock;
 let playerGroup, playerPos = {x:0,z:0}, playerVel = {x:0,z:0};
 let others = {}; // user_id -> { group, targetPos }
 let plinths = [];
+let nearbyPartnerId = null;
 let worldReady = false;
 
 function makeLabelSprite(text, bg){
@@ -572,7 +580,7 @@ async function loadPartnerPlinths(){
     const label = makeLabelSprite(p.name, '#D14A3E');
     label.position.set(pos.x, 1.6, pos.z);
     scene.add(label);
-    plinths.push({ id: p.id, name: p.name, x: pos.x, z: pos.z, mesh: disc });
+    plinths.push({ id: p.id, name: p.name, latitude: p.latitude, longitude: p.longitude, radius_meters: p.radius_meters, x: pos.x, z: pos.z, mesh: disc });
   });
 }
 
@@ -610,13 +618,19 @@ function animate(){
 }
 
 function checkNearby(){
-  let nearest = null, nearestD = 999;
+  let nearest = null, nearestD = Infinity;
+  const playerGeo = worldToGeo(playerPos.x, playerPos.z);
   plinths.forEach(p => {
-    const d = Math.hypot(p.x - playerPos.x, p.z - playerPos.z);
-    if (d < nearestD) { nearestD = d; nearest = p; }
+    const d = haversineMeters(playerGeo.lat, playerGeo.lon, p.latitude, p.longitude);
+    if (d <= p.radius_meters + CHECKIN_ACCURACY_METERS && d < nearestD) {
+      nearestD = d;
+      nearest = p;
+    }
   });
   const banner = $('#nearbyBanner');
-  if (nearest && nearestD < 4.5) {
+  if (nearest) {
+    if (nearbyPartnerId === nearest.id) return;
+    nearbyPartnerId = nearest.id;
     banner.innerHTML = '';
     const box = elc('div', {class:'nearby-banner'},
       elc('div', {class:'txt'}, 'Bạn đang ở gần ', elc('b', {}, nearest.name)),
@@ -624,7 +638,8 @@ function checkNearby(){
     );
     banner.appendChild(box);
   } else {
-    banner.innerHTML = '';
+    if (nearbyPartnerId !== null) banner.innerHTML = '';
+    nearbyPartnerId = null;
   }
 }
 
@@ -632,7 +647,7 @@ async function doCheckin(partnerId){
   const geo = worldToGeo(playerPos.x, playerPos.z);
   const r = await api('/v1/checkin', {method:'POST', body: JSON.stringify({
     partner_id: partnerId, latitude: geo.lat, longitude: geo.lon,
-    accuracy_meters: 5, client_timestamp_unix: Math.floor(Date.now()/1000)
+    accuracy_meters: CHECKIN_ACCURACY_METERS, client_timestamp_unix: Math.floor(Date.now()/1000)
   })});
   if (r.ok && r.body && r.body.success) {
     toast('✅ Check-in +' + r.body.points_awarded + ' điểm', 'ok');

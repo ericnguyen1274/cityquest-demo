@@ -6,6 +6,8 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+const DEV_SECRET: &str = "dev-only-insecure-secret-doi-truoc-khi-deploy";
+
 #[derive(Serialize, Deserialize)]
 struct Claims {
     sub: String, // user_id dạng string
@@ -18,7 +20,23 @@ fn secret() -> String {
     // riêng (xem .env.example) — nếu không ai cũng đoán được secret và tự
     // ký JWT giả mạo bất kỳ user_id nào.
     std::env::var("JWT_SECRET")
-        .unwrap_or_else(|_| "dev-only-insecure-secret-doi-truoc-khi-deploy".to_string())
+        .unwrap_or_else(|_| DEV_SECRET.to_string())
+}
+
+pub fn validate_configuration() -> Result<(), String> {
+    if !std::env::var("APP_ENV").unwrap_or_default().eq_ignore_ascii_case("production") {
+        return Ok(());
+    }
+
+    let configured_secret = std::env::var("JWT_SECRET")
+        .map_err(|_| "JWT_SECRET bắt buộc phải được cấu hình trong production".to_string())?;
+    if configured_secret.len() < 32 || configured_secret == DEV_SECRET {
+        return Err("JWT_SECRET trong production phải dài ít nhất 32 ký tự và không được dùng secret dev".into());
+    }
+    if std::env::var("CORS_ALLOWED_ORIGINS").map_or(true, |origins| origins.trim().is_empty()) {
+        return Err("CORS_ALLOWED_ORIGINS bắt buộc phải được cấu hình trong production".into());
+    }
+    Ok(())
 }
 
 pub fn create_token(user_id: Uuid) -> String {

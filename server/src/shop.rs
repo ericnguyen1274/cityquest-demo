@@ -6,7 +6,6 @@
 use crate::jwt::user_id_from_headers;
 use crate::store::{Store, Voucher};
 use axum::{extract::State, http::HeaderMap, http::StatusCode, Json};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -93,6 +92,9 @@ pub async fn buy_item(
     };
 
     let user_points = data.users.get(&user_id).map(|u| u.points).unwrap_or(0);
+    if data.user_items.contains_key(&(user_id, req.item_id.clone())) {
+        return (StatusCode::BAD_REQUEST, Json(ShopActionResponse { success: false, points: user_points, combo_unlocked: None, message: Some("Bạn đã sở hữu vật phẩm này".into()) }));
+    }
     if user_points < item.cost {
         return (StatusCode::OK, Json(ShopActionResponse { success: false, points: user_points, combo_unlocked: None, message: Some("Không đủ điểm".into()) }));
     }
@@ -177,8 +179,12 @@ fn check_and_grant_combo(data: &mut crate::store::Data, user_id: Uuid) -> Option
             continue;
         }
 
-        let mut rng = rand::thread_rng();
-        let code = format!("CFE-{:04}-{}", rng.gen_range(0..10000), combo.id.to_uppercase());
+        let code = loop {
+            let candidate = format!("CFE-{}-{}", Uuid::new_v4().simple(), combo.id.to_uppercase());
+            if !data.vouchers.values().any(|voucher| voucher.code == candidate) {
+                break candidate;
+            }
+        };
         let expires_at = chrono::Utc::now() + chrono::Duration::days(combo.voucher_validity_days);
 
         let voucher_id = Uuid::new_v4();

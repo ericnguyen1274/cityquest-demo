@@ -14,12 +14,15 @@ mod shop;
 mod store;
 
 use axum::{
-    http::{HeaderMap, StatusCode},
+    extract::Path,
+    http::{header, header::HeaderValue, HeaderMap, StatusCode},
+    response::{IntoResponse, Redirect, Response},
     routing::{delete, get, post},
     Json, Router,
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::Arc;
 use store::Store;
 use tower_http::cors::{Any, CorsLayer};
@@ -28,10 +31,17 @@ use tower_http::cors::{Any, CorsLayer};
 async fn main() {
     tracing_subscriber::fmt::init();
     dotenvy::dotenv().ok();
+    if let Err(error) = jwt::validate_configuration() {
+        tracing::error!("{error}");
+        std::process::exit(1);
+    }
 
     let store = Arc::new(Store::seeded());
 
     let app = Router::new()
+        // Trang web giao diện demo
+        .route("/", get(root_handler))
+        .route("/:filename", get(serve_html_file))
         // Auth
         .route("/v1/auth/register", post(auth::register))
         .route("/v1/auth/login", post(auth::login))
@@ -57,12 +67,9 @@ async fn main() {
         .route("/v1/search", get(business::search_partners))
         // Bản đồ 3D multiplayer: vị trí thời gian thực (polling)
         .route("/v1/presence", get(presence::list_presence).post(presence::update_presence))
-        // CORS cho dashboard web (web/owner-dashboard.html) gọi từ trình duyệt.
-        // Any() chỉ dùng cho môi trường dev. Lên production phải đổi sang danh sách
-        // domain cụ thể, nếu không thì bất kỳ website nào cũng gọi API của bạn được.
         .layer(
             CorsLayer::new()
-                .allow_origin(Any)
+                .allow_origin(cors_allowed_origins())
                 .allow_methods(Any)
                 .allow_headers(Any),
         )
@@ -73,6 +80,50 @@ async fn main() {
         .expect("Không mở được cổng 44321");
     tracing::info!("Server (in-memory, không cần DB) chạy tại http://0.0.0.0:44321");
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn root_handler() -> Redirect {
+    Redirect::temporary("/simulator.html")
+}
+
+async fn serve_html_file(Path(filename): Path<String>) -> Result<Response, StatusCode> {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    let candidates = [
+        PathBuf::from("../web").join(&filename),
+        PathBuf::from("web").join(&filename),
+    ];
+    for path in &candidates {
+        if path.is_file() {
+            if let Ok(content) = std::fs::read(path) {
+                return Ok((
+                    [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                    content,
+                )
+                    .into_response());
+            }
+        }
+    }
+    Err(StatusCode::NOT_FOUND)
+}
+
+fn cors_allowed_origins() -> Vec<HeaderValue> {
+    let configured = std::env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
+        "null,http://localhost:8000,http://127.0.0.1:8000".to_string()
+    });
+    let origins: Vec<HeaderValue> = configured
+        .split(',')
+        .map(str::trim)
+        .filter(|origin| !origin.is_empty())
+        .map(|origin| origin.parse::<HeaderValue>().unwrap_or_else(|error| {
+            panic!("CORS_ALLOWED_ORIGINS chứa origin không hợp lệ '{origin}': {error}")
+        }))
+        .collect();
+    if origins.is_empty() {
+        panic!("CORS_ALLOWED_ORIGINS phải chứa ít nhất một origin");
+    }
+    origins
 }
 
 // ===== Check-in =====

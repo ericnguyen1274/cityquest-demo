@@ -38,7 +38,7 @@ namespace CityQuest.Gameplay
 
     public class WardrobeManager : MonoBehaviour
     {
-        [SerializeField] private string apiBaseUrl = "https://api.cityquest.app";
+        [SerializeField] private string apiBaseUrl = "http://localhost:44321";
 
         public WardrobeLoadedEvent OnWardrobeLoaded;
         public ComboUnlockedEvent OnComboUnlocked;
