@@ -43,6 +43,12 @@ Server chạy ở `http://localhost:44321`, có sẵn dữ liệu mẫu: 5 đi�
 TP.HCM (`cafe-01`, `cafe-02`, `tra-sua-01`, `nhahang-01`, `model-shop-01`), 6 món đồ, 1 combo
 mẫu `coffee_black`.
 
+Khi mở web từ `file://`, origin là `null` và đã nằm trong CORS mặc định cho demo. Nếu phục vụ
+web ở host/port khác, thêm origin đó vào `CORS_ALLOWED_ORIGINS` (các origin phân tách bằng dấu phẩy).
+Khi deploy, đặt `APP_ENV=production`, cung cấp `JWT_SECRET` riêng dài ít nhất 32 ký tự và
+`CORS_ALLOWED_ORIGINS` chỉ gồm domain tin cậy; server sẽ từ chối khởi động production nếu thiếu
+cấu hình này hoặc còn dùng secret dev.
+
 **Tài khoản mới đăng ký được tặng sẵn 400 điểm** (dev-only, xem ghi chú trong `auth.rs`) để bạn
 test mua đồ/combo ngay mà không phải check-in nhiều ngày chờ đủ điểm. Xoá dòng đó khi không cần
 nữa.
@@ -137,8 +143,8 @@ curl -X POST http://localhost:44321/v1/vouchers/redeem \
 1. Copy toàn bộ `unity/Assets/Scripts/*.cs` vào `Assets/Scripts/` trong project Unity của bạn.
 2. `PartnerCheckin.cs` chỉ dùng `Input.location` (GPS gốc của Unity) — không cần cài SDK bản đồ nào.
 3. Tạo GameObject `SessionManager` → gắn `SessionManager.cs`.
-4. Tạo GameObject `AuthManager` → gắn `AuthManager.cs`, điền `Api Base Url`, nối `OnAuthSuccess`/`OnAuthFailed` với UI màn đăng nhập.
-5. Tạo GameObject `WardrobeManager` → gắn `WardrobeManager.cs`, nối `OnWardrobeLoaded`/`OnComboUnlocked`.
+4. Tạo GameObject `AuthManager` → gắn `AuthManager.cs`, điền `Api Base Url` (mặc định `http://localhost:44321`; khi chạy trên thiết bị thật, dùng địa chỉ LAN của máy chạy server), nối `OnAuthSuccess`/`OnAuthFailed` với UI màn đăng nhập.
+5. Tạo GameObject `WardrobeManager` → gắn `WardrobeManager.cs`, đặt cùng `Api Base Url` với `AuthManager`, nối `OnWardrobeLoaded`/`OnComboUnlocked`.
 6. Tạo GameObject `CheckinManager` → gắn `PartnerCheckin.cs`.
 7. Cho luồng search map: gọi `GET /v1/search?q=...` và `GET /v1/partners` (chưa có script Unity
    sẵn cho phần này — nếu cần mình viết thêm `MapSearchManager.cs` theo đúng style 2 script kia).

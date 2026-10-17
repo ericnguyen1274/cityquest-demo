@@ -325,6 +325,20 @@ let state = {
   partners: [],
 };
 
+// Lưu các quán đã check-in trên client
+let checkedInPartners = new Set();
+try {
+  const saved = JSON.parse(localStorage.getItem('cq_checkedin_today') || '[]');
+  checkedInPartners = new Set(saved);
+} catch(e) {}
+
+function markCheckedIn(pid) {
+  checkedInPartners.add(pid);
+  try {
+    localStorage.setItem('cq_checkedin_today', JSON.stringify(Array.from(checkedInPartners)));
+  } catch(e) {}
+}
+
 function serverUrl(){ return $('#serverUrl').value.replace(/\/$/,''); }
 
 async function api(path, opts={}) {
@@ -471,20 +485,34 @@ async function renderMap() {
     const path = q ? '/v1/search?q=' + encodeURIComponent(q) : '/v1/partners';
     const r = await api(path);
     resultsBox.innerHTML = '';
-    const list = (r.body || []);
-    if (!list.length) { resultsBox.appendChild(el('div', {class:'empty'}, 'Không tìm thấy quán nào.')); return; }
-    list.forEach(p => {
+    const allList = (r.body || []);
+    // Tự động ẩn các quán đã check-in (từ server HOẶC từ bộ nhớ client)
+    const available = allList.filter(p => {
       const pid = p.partner_id || p.id;
-      const row = el('div', {class:'place'},
+      return !p.checked_in_today && !checkedInPartners.has(pid);
+    });
+    if (!available.length) {
+      if (allList.length > 0) {
+        resultsBox.appendChild(el('div', {class:'msg ok', style:'margin:12px 0;'}, '🎉 Bạn đã hoàn thành check-in tất cả các quán hôm nay!'));
+      } else {
+        resultsBox.appendChild(el('div', {class:'empty'}, 'Không tìm thấy quán nào.'));
+      }
+      return;
+    }
+    available.forEach(p => {
+      const pid = p.partner_id || p.id;
+      const row = el('div', {class:'place', id:'partner-' + pid},
         el('div', {},
           el('div', {class:'pname'}, p.name),
           el('div', {class:'pmeta'}, `${pid} · ${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}` + (p.points_reward!=null ? ` · +${p.points_reward}đ` : ''))
         ),
-        el('button', {class:'btn btn-coral btn-sm', onclick: () => doCheckin(pid, p.latitude, p.longitude)}, 'Check-in')
+        el('button', {class:'btn btn-coral btn-sm', onclick: () => doCheckin(pid, p.latitude, p.longitude, row)}, 'Check-in')
       );
       resultsBox.appendChild(row);
     });
   }
+
+  window._reloadPartners = () => loadPartners(searchInput.value.trim());
 
   searchInput.addEventListener('input', () => loadPartners(searchInput.value.trim()));
   await loadPartners('');
@@ -495,21 +523,60 @@ async function renderMap() {
   window._doCheckin = null;
 }
 
-async function doCheckin(partnerId, lat, lon) {
+async function doCheckin(partnerId, lat, lon, rowEl) {
   const msgSlot = $('#checkinMsg');
-  msgSlot.innerHTML = '<div class="msg info">Đang check-in…</div>';
-  const r = await api('/v1/checkin', {method:'POST', body: JSON.stringify({
-    partner_id: partnerId, latitude: lat, longitude: lon,
-    accuracy_meters: 8, client_timestamp_unix: Math.floor(Date.now()/1000)
-  })});
-  if (r.ok && r.body && r.body.success) {
-    msgSlot.innerHTML = '';
-    msgSlot.appendChild(el('div', {class:'msg ok'}, `✅ Check-in thành công tại ${partnerId}! +${r.body.points_awarded} điểm`));
-  } else {
-    msgSlot.innerHTML = '';
-    msgSlot.appendChild(el('div', {class:'msg err'}, '❌ ' + ((r.body && r.body.message) || 'Check-in thất bại')));
+  if (msgSlot) msgSlot.innerHTML = '<div class="msg info">Đang check-in…</div>';
+  try {
+    const r = await api('/v1/checkin', {method:'POST', body: JSON.stringify({
+      partner_id: partnerId, latitude: lat, longitude: lon,
+      accuracy_meters: 8, client_timestamp_unix: Math.floor(Date.now()/1000)
+    })});
+    if (r.ok && r.body && r.body.success) {
+      markCheckedIn(partnerId);
+      if (msgSlot) {
+        msgSlot.innerHTML = '';
+        msgSlot.appendChild(el('div', {class:'msg ok'}, `✅ Check-in thành công tại ${partnerId}! +${r.body.points_awarded} điểm`));
+      }
+      // Tự động làm mờ và ẩn quán vừa check-in xong
+      if (rowEl) {
+        rowEl.style.transition = 'all 0.3s ease';
+        rowEl.style.opacity = '0';
+        rowEl.style.transform = 'translateX(20px)';
+        setTimeout(() => {
+          rowEl.remove();
+          if (window._reloadPartners) window._reloadPartners();
+        }, 300);
+      } else if (window._reloadPartners) {
+        window._reloadPartners();
+      }
+    } else {
+      const errMsg = (r.body && r.body.message) || 'Check-in thất bại';
+      if (msgSlot) {
+        msgSlot.innerHTML = '';
+        msgSlot.appendChild(el('div', {class:'msg err'}, '❌ ' + errMsg));
+      }
+      // Nếu quán này đã check-in hôm nay rồi thì ghi nhớ và tự động ẩn ngay
+      if (errMsg.includes('đã check-in')) {
+        markCheckedIn(partnerId);
+        if (rowEl) {
+          rowEl.style.transition = 'all 0.3s ease';
+          rowEl.style.opacity = '0';
+          setTimeout(() => {
+            rowEl.remove();
+            if (window._reloadPartners) window._reloadPartners();
+          }, 300);
+        } else if (window._reloadPartners) {
+          window._reloadPartners();
+        }
+      }
+    }
+    await refreshPoints();
+  } catch(err) {
+    if (msgSlot) {
+      msgSlot.innerHTML = '';
+      msgSlot.appendChild(el('div', {class:'msg err'}, '❌ Lỗi: ' + (err.message || err)));
+    }
   }
-  await refreshPoints();
 }
 
 // ---------- Tủ đồ / combo ----------
@@ -542,8 +609,9 @@ async function renderWardrobe() {
 }
 
 async function shopAction(path, item_id) {
-  const msgBox = $('#wardrobeMsg');
   const r = await api(path, {method:'POST', body: JSON.stringify({item_id})});
+  await renderWardrobe();
+  const msgBox = $('#wardrobeMsg');
   msgBox.innerHTML = '';
   if (r.ok && r.body && r.body.success) {
     if (r.body.combo_unlocked) {
@@ -554,7 +622,6 @@ async function shopAction(path, item_id) {
   } else {
     msgBox.appendChild(el('div', {class:'msg err'}, '❌ ' + ((r.body && r.body.message) || 'Không thực hiện được.')));
   }
-  await renderWardrobe();
   await refreshPoints();
 }
 

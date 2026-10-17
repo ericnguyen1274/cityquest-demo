@@ -90,6 +90,9 @@ pub async fn create_business(
         if !data.partners.contains_key(pid) {
             return (StatusCode::BAD_REQUEST, Json(CreateBusinessResponse { message: format!("Không tìm thấy partner_id '{}' — xem danh sách tại GET /v1/partners", pid), ..Default::default() }));
         }
+        if data.businesses.values().any(|business| business.partner_id.as_deref() == Some(pid.as_str())) {
+            return (StatusCode::CONFLICT, Json(CreateBusinessResponse { message: format!("partner_id '{}' đã được gắn với một quán khác", pid), ..Default::default() }));
+        }
     }
     if let Some(cid) = &req.combo_id {
         if !data.combos.contains_key(cid) {
@@ -358,17 +361,37 @@ pub struct PartnerDto {
     pub name: String,
     pub latitude: f64,
     pub longitude: f64,
+    pub radius_meters: f32,
     pub points_reward: i32,
+    pub checked_in_today: bool,
 }
 
 /// GET /v1/partners — toàn bộ điểm đối tác đang active, để vẽ pin lên bản đồ.
-pub async fn list_partners(State(store): State<Arc<Store>>) -> Json<Vec<PartnerDto>> {
+pub async fn list_partners(
+    State(store): State<Arc<Store>>,
+    headers: HeaderMap,
+) -> Json<Vec<PartnerDto>> {
+    let maybe_user_id = user_id_from_headers(&headers);
+    let today = Utc::now().date_naive();
     let data = store.0.read().unwrap();
     let list = data
         .partners
         .values()
         .filter(|p| p.active)
-        .map(|p| PartnerDto { id: p.id.clone(), name: p.name.clone(), latitude: p.latitude, longitude: p.longitude, points_reward: p.points_reward })
+        .map(|p| {
+            let checked_in_today = maybe_user_id
+                .map(|uid| data.checkins.contains(&(uid, p.id.clone(), today)))
+                .unwrap_or(false);
+            PartnerDto {
+                id: p.id.clone(),
+                name: p.name.clone(),
+                latitude: p.latitude,
+                longitude: p.longitude,
+                radius_meters: p.radius_meters,
+                points_reward: p.points_reward,
+                checked_in_today,
+            }
+        })
         .collect();
     Json(list)
 }
@@ -384,14 +407,23 @@ pub struct SearchResult {
     pub name: String,
     pub latitude: f64,
     pub longitude: f64,
+    pub radius_meters: f32,
     /// Có quán (business) nào của app gắn với điểm này chưa, hay chỉ là điểm GPS trần.
     pub business_id: Option<Uuid>,
+    pub points_reward: i32,
+    pub checked_in_today: bool,
 }
 
 /// GET /v1/search?q=... — tìm quán theo tên (không phân biệt hoa/thường, khớp
 /// một phần), dùng cho ô tìm kiếm trên bản đồ trong app/Unity.
-pub async fn search_partners(State(store): State<Arc<Store>>, Query(params): Query<SearchQuery>) -> Json<Vec<SearchResult>> {
+pub async fn search_partners(
+    State(store): State<Arc<Store>>,
+    headers: HeaderMap,
+    Query(params): Query<SearchQuery>,
+) -> Json<Vec<SearchResult>> {
     let q = params.q.trim().to_lowercase();
+    let maybe_user_id = user_id_from_headers(&headers);
+    let today = Utc::now().date_naive();
     let data = store.0.read().unwrap();
 
     let mut results: Vec<SearchResult> = data
@@ -400,7 +432,19 @@ pub async fn search_partners(State(store): State<Arc<Store>>, Query(params): Que
         .filter(|p| p.active && (q.is_empty() || p.name.to_lowercase().contains(&q) || p.id.to_lowercase().contains(&q)))
         .map(|p| {
             let business_id = data.businesses.values().find(|b| b.partner_id.as_deref() == Some(p.id.as_str())).map(|b| b.id);
-            SearchResult { partner_id: p.id.clone(), name: p.name.clone(), latitude: p.latitude, longitude: p.longitude, business_id }
+            let checked_in_today = maybe_user_id
+                .map(|uid| data.checkins.contains(&(uid, p.id.clone(), today)))
+                .unwrap_or(false);
+            SearchResult {
+                partner_id: p.id.clone(),
+                name: p.name.clone(),
+                latitude: p.latitude,
+                longitude: p.longitude,
+                radius_meters: p.radius_meters,
+                business_id,
+                points_reward: p.points_reward,
+                checked_in_today,
+            }
         })
         .collect();
 

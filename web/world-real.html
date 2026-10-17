@@ -298,7 +298,7 @@ const CENTER = { lat: 10.7755, lon: 106.6995 };
 // game) để demo không phải chờ lâu mới tới được quán kế bên — khoảng cách thật
 // giữa các quán mẫu là 400-1500m.
 const SPEED_MPS = 26; // ~94 km/h — tốc độ "chạy" trong game demo, KHÔNG phải tốc độ đi bộ thật
-const METERS_PER_DEG_LAT = 111320;
+const METERS_PER_DEG_LAT = 111320, CHECKIN_ACCURACY_METERS = 5;
 
 const ITEM_META = {
   ao_do:   { slot:'ao',   color:'#FF6F61', label:'Áo đỏ' },
@@ -413,6 +413,7 @@ function updateHud(){
 
 // ================= bản đồ thật (MapLibre + OpenFreeMap) =================
 let map, playerMarker, others = {}, partnerMarkers = [];
+let nearbyPartnerId = null;
 let mapReady = false;
 
 function buildAvatarEl(displayName, outfit, isSelf){
@@ -558,27 +559,37 @@ function moveLoop(ts){
 }
 
 function checkNearby(){
-  let nearest=null, nearestD=999999;
+  let nearest=null, nearestD=Infinity;
   state.partners.forEach(p => {
     const d = haversineMeters(state.playerPos.lat, state.playerPos.lon, p.latitude, p.longitude);
-    if (d < nearestD) { nearestD = d; nearest = p; }
+    if (d <= p.radius_meters + CHECKIN_ACCURACY_METERS && d < nearestD) {
+      nearestD = d;
+      nearest = p;
+    }
   });
   const banner = $('#nearbyBanner');
-  if (nearest && nearestD < 35) {
+  if (nearest) {
+    if (nearbyPartnerId === nearest.id) {
+      const distanceLabel = banner.querySelector('.nearby-distance');
+      if (distanceLabel) distanceLabel.textContent = Math.round(nearestD)+'m';
+      return;
+    }
+    nearbyPartnerId = nearest.id;
     banner.innerHTML = '';
     banner.appendChild(elc('div', {class:'nearby-banner'},
-      elc('div', {class:'txt'}, 'Bạn đang ở gần ', elc('b',{}, nearest.name), elc('small',{}, Math.round(nearestD)+'m')),
+      elc('div', {class:'txt'}, 'Bạn đang ở gần ', elc('b',{}, nearest.name), elc('small', {class:'nearby-distance'}, Math.round(nearestD)+'m')),
       elc('button', {class:'btn btn-coral btn-sm', onclick: () => doCheckin(nearest.id)}, 'Check-in')
     ));
   } else {
-    banner.innerHTML = '';
+    if (nearbyPartnerId !== null) banner.innerHTML = '';
+    nearbyPartnerId = null;
   }
 }
 
 async function doCheckin(partnerId){
   const r = await api('/v1/checkin', {method:'POST', body: JSON.stringify({
     partner_id: partnerId, latitude: state.playerPos.lat, longitude: state.playerPos.lon,
-    accuracy_meters: 5, client_timestamp_unix: Math.floor(Date.now()/1000)
+    accuracy_meters: CHECKIN_ACCURACY_METERS, client_timestamp_unix: Math.floor(Date.now()/1000)
   })});
   if (r.ok && r.body && r.body.success) {
     toast('✅ Check-in +'+r.body.points_awarded+' điểm', 'ok');
