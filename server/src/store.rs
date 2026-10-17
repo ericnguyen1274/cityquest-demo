@@ -79,15 +79,14 @@ pub struct Business {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct EventRow {
     pub id: Uuid,
-    #[allow(dead_code)]
     pub business_id: Uuid,
     pub title: String,
     pub body: String,
     pub starts_at: DateTime<Utc>,
     pub ends_at: DateTime<Utc>,
-    #[allow(dead_code)]
     pub created_by: Uuid,
 }
 
